@@ -1,7 +1,8 @@
 import path from 'node:path';
 import {
-  getStoredRootFolderUri,
+  getStoredRootFolderPath,
   setStoredRootFolderUri,
+  toRootFolderUri,
   type ExtensionContextLike,
 } from './extensionState.js';
 
@@ -25,29 +26,45 @@ export interface RootResolverDeps {
   window: WindowLike;
 }
 
+const inFlightRootFolderSelections = new WeakMap<ExtensionContextLike, Promise<string>>();
+
 export async function ensureRootFolder({ context, window }: RootResolverDeps): Promise<string> {
-  const storedRootFolderUri = getStoredRootFolderUri(context);
-  if (storedRootFolderUri) {
-    return storedRootFolderUri;
+  const storedRootFolderPath = getStoredRootFolderPath(context);
+  if (storedRootFolderPath) {
+    return storedRootFolderPath;
   }
 
-  const selection = await window.showOpenDialog({
-    canSelectFiles: false,
-    canSelectFolders: true,
-    canSelectMany: false,
-    openLabel: '选择本地 OJ 根目录',
-  });
-  const rootFolderUri = selection?.[0]?.fsPath?.trim();
-
-  if (!rootFolderUri) {
-    throw new Error(ROOT_FOLDER_REQUIRED_ERROR_MESSAGE);
+  const inFlightSelection = inFlightRootFolderSelections.get(context);
+  if (inFlightSelection) {
+    return inFlightSelection;
   }
 
-  await setStoredRootFolderUri(context, rootFolderUri);
-  return rootFolderUri;
+  const selectionPromise = (async () => {
+    try {
+      const selection = await window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: '选择本地 OJ 根目录',
+      });
+      const rootFolderPath = selection?.[0]?.fsPath?.trim();
+
+      if (!rootFolderPath) {
+        throw new Error(ROOT_FOLDER_REQUIRED_ERROR_MESSAGE);
+      }
+
+      await setStoredRootFolderUri(context, toRootFolderUri(rootFolderPath));
+      return rootFolderPath;
+    } finally {
+      inFlightRootFolderSelections.delete(context);
+    }
+  })();
+
+  inFlightRootFolderSelections.set(context, selectionPromise);
+  return selectionPromise;
 }
 
 export async function getProductRoot(deps: RootResolverDeps): Promise<string> {
-  const rootFolderUri = await ensureRootFolder(deps);
-  return path.join(rootFolderUri, 'Educoder Local OJ');
+  const rootFolderPath = await ensureRootFolder(deps);
+  return path.join(rootFolderPath, 'Educoder Local OJ');
 }
