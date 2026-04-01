@@ -7,11 +7,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "types": ["node", "vitest/globals"],
-    "baseUrl": ".",
-    "paths": {
-      "vscode": ["src/extension.ts"]
-    },
+    "types": ["node", "vitest/globals", "vscode"],
     "outDir": "dist",
     "rootDir": "."
   },

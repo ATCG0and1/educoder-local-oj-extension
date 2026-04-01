@@ -1,14 +1,5 @@
-export interface Disposable {
-  dispose(): void;
-}
+import * as vscode from 'vscode';
 
-export interface ExtensionContext {
-  subscriptions: Disposable[];
-}
-
-type CommandHandler = (...args: unknown[]) => unknown;
-
-const registeredHandlers = new Map<string, CommandHandler>();
 const frozenCommands = [
   'educoderLocalOj.syncCurrentCollection',
   'educoderLocalOj.openTask',
@@ -22,27 +13,13 @@ const frozenCommands = [
 
 let activated = false;
 
-export const commands = {
-  registerCommand(command: string, handler: CommandHandler): Disposable {
-    registeredHandlers.set(command, handler);
-    return {
-      dispose() {
-        registeredHandlers.delete(command);
-      },
-    };
-  },
-  async getCommands(_filterInternal?: boolean): Promise<string[]> {
-    return [...registeredHandlers.keys()];
-  },
-};
-
-export async function activate(context: ExtensionContext): Promise<void> {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   if (activated) {
     return;
   }
 
   for (const commandId of frozenCommands) {
-    const disposable = commands.registerCommand(commandId, () => undefined);
+    const disposable = vscode.commands.registerCommand(commandId, () => undefined);
     context.subscriptions.push(disposable);
   }
 
@@ -50,8 +27,5 @@ export async function activate(context: ExtensionContext): Promise<void> {
 }
 
 export function deactivate(): void {
-  registeredHandlers.clear();
   activated = false;
 }
-
-await activate({ subscriptions: [] });

@@ -1,16 +1,62 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type * as VsCode from 'vscode';
+
+const mocked = vi.hoisted(() => {
+  const registeredCommands = new Map<string, (...args: unknown[]) => unknown>();
+  const registerCommand = vi.fn((command: string, handler: (...args: unknown[]) => unknown) => {
+    registeredCommands.set(command, handler);
+    return {
+      dispose: () => {
+        registeredCommands.delete(command);
+      },
+    };
+  });
+  const getCommands = vi.fn(async () => [...registeredCommands.keys()]);
+
+  return { registeredCommands, registerCommand, getCommands };
+});
+
+vi.mock('vscode', () => ({
+  commands: {
+    registerCommand: mocked.registerCommand,
+    getCommands: mocked.getCommands,
+  },
+}));
+
 import * as vscode from 'vscode';
-import { describe, it, expect } from 'vitest';
+import { activate } from '../../src/extension.js';
+
+const frozenCommands = [
+  'educoderLocalOj.syncCurrentCollection',
+  'educoderLocalOj.openTask',
+  'educoderLocalOj.runLocalJudge',
+  'educoderLocalOj.rerunFailedCases',
+  'educoderLocalOj.runOfficialJudge',
+  'educoderLocalOj.forceRunOfficialJudge',
+  'educoderLocalOj.rollbackTemplate',
+  'educoderLocalOj.rollbackPassed',
+] as const;
 
 describe('command registration', () => {
-  it('registers frozen MVP commands', async () => {
+  beforeEach(() => {
+    mocked.registeredCommands.clear();
+    mocked.registerCommand.mockClear();
+    mocked.getCommands.mockClear();
+  });
+
+  it('registers frozen MVP commands on activate only', async () => {
+    await expect(vscode.commands.getCommands(true)).resolves.toEqual([]);
+
+    const context = {
+      subscriptions: [],
+    } as unknown as VsCode.ExtensionContext;
+
+    await activate(context);
+
+    expect(mocked.registerCommand).toHaveBeenCalledTimes(frozenCommands.length);
+
     const commands = await vscode.commands.getCommands(true);
-    expect(commands).toContain('educoderLocalOj.syncCurrentCollection');
-    expect(commands).toContain('educoderLocalOj.openTask');
-    expect(commands).toContain('educoderLocalOj.runLocalJudge');
-    expect(commands).toContain('educoderLocalOj.rerunFailedCases');
-    expect(commands).toContain('educoderLocalOj.runOfficialJudge');
-    expect(commands).toContain('educoderLocalOj.forceRunOfficialJudge');
-    expect(commands).toContain('educoderLocalOj.rollbackTemplate');
-    expect(commands).toContain('educoderLocalOj.rollbackPassed');
+    expect(commands).toEqual(expect.arrayContaining(Array.from(frozenCommands)));
+    expect(context.subscriptions).toHaveLength(frozenCommands.length);
   });
 });
