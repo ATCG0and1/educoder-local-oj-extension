@@ -1,0 +1,11 @@
+.git/**
+.worktrees/**
+tests/**
+src/**/*.ts
+!src/webview/**/*.html
+!src/webview/**/*.css
+dist/tests/**
+dist/vitest.config.js
+tsconfig.json
+vitest.config.ts
+node_modules/.bin/**

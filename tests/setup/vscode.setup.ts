@@ -13,6 +13,14 @@ vi.mock('vscode', () => ({
       };
     },
     getCommands: async (_filterInternal?: boolean) => [...registeredCommands.keys()],
+    executeCommand: async (command: string, ...args: unknown[]) => {
+      const handler = registeredCommands.get(command);
+      if (!handler) {
+        throw new Error(`Command not found: ${command}`);
+      }
+
+      return handler(...args);
+    },
   },
 }));
 

@@ -1,0 +1,15 @@
+body {
+  font-family: "Microsoft YaHei", sans-serif;
+  background: #111827;
+  color: #f9fafb;
+  margin: 0;
+  padding: 16px;
+}
+
+.home-card,
+.task-card {
+  background: #1f2937;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}

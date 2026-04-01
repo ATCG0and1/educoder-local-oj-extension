@@ -3,6 +3,11 @@
   "displayName": "Educoder Local OJ Extension",
   "version": "0.0.1",
   "private": true,
+  "description": "Sync Educoder shixun_homework collections into a local OJ workflow inside VS Code.",
+  "publisher": "young-lab",
+  "license": "MIT",
+  "categories": ["Other"],
+  "keywords": ["educoder", "oj", "vscode", "judge"],
   "type": "module",
   "engines": {
     "vscode": "^1.90.0"
@@ -18,16 +23,20 @@
     "onCommand:educoderLocalOj.rollbackPassed"
   ],
   "main": "./dist/src/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://example.com/young/educoder-local-oj-extension.git"
+  },
   "contributes": {
     "commands": [
-      { "command": "educoderLocalOj.syncCurrentCollection", "title": "Sync Current Collection" },
-      { "command": "educoderLocalOj.openTask", "title": "Open Task" },
-      { "command": "educoderLocalOj.runLocalJudge", "title": "Run Local Judge" },
-      { "command": "educoderLocalOj.rerunFailedCases", "title": "Rerun Failed Cases" },
-      { "command": "educoderLocalOj.runOfficialJudge", "title": "Run Official Judge" },
-      { "command": "educoderLocalOj.forceRunOfficialJudge", "title": "Force Run Official Judge" },
-      { "command": "educoderLocalOj.rollbackTemplate", "title": "Rollback Template" },
-      { "command": "educoderLocalOj.rollbackPassed", "title": "Rollback Passed" }
+      { "command": "educoderLocalOj.syncCurrentCollection", "title": "Educoder Local OJ: Sync Current Collection" },
+      { "command": "educoderLocalOj.openTask", "title": "Educoder Local OJ: Open Task" },
+      { "command": "educoderLocalOj.runLocalJudge", "title": "Educoder Local OJ: Run Local Judge" },
+      { "command": "educoderLocalOj.rerunFailedCases", "title": "Educoder Local OJ: Rerun Failed Cases" },
+      { "command": "educoderLocalOj.runOfficialJudge", "title": "Educoder Local OJ: Run Official Judge" },
+      { "command": "educoderLocalOj.forceRunOfficialJudge", "title": "Educoder Local OJ: Force Run Official Judge" },
+      { "command": "educoderLocalOj.rollbackTemplate", "title": "Educoder Local OJ: Rollback Template" },
+      { "command": "educoderLocalOj.rollbackPassed", "title": "Educoder Local OJ: Rollback Passed" }
     ]
   },
   "scripts": {
