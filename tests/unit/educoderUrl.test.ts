@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEducoderCollectionUrl } from '../../src/core/url/educoderUrl';
+import { parseEducoderCollectionUrl } from '../../src/core/url/educoderUrl.js';
 
 describe('parseEducoderCollectionUrl', () => {
   it('accepts shixun_homework collection urls', () => {

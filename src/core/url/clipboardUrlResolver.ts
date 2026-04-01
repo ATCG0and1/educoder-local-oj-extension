@@ -1,10 +1,10 @@
-import { parseEducoderCollectionUrl, type EducoderCollectionUrl } from './educoderUrl';
+import { parseEducoderCollectionUrl, type EducoderCollectionUrl } from './educoderUrl.js';
 
 export const CLIPBOARD_URL_ERROR_MESSAGE = '请先在 Edge 复制头歌 shixun_homework 页面链接';
 
 export interface ClipboardEnv {
   clipboard: {
-    readText(): Thenable<string> | Promise<string>;
+    readText(): PromiseLike<string> | Promise<string>;
   };
 }
 

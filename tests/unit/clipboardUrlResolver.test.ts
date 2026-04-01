@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveCollectionUrlFromClipboard } from '../../src/core/url/clipboardUrlResolver';
+import { resolveCollectionUrlFromClipboard } from '../../src/core/url/clipboardUrlResolver.js';
 
 describe('resolveCollectionUrlFromClipboard', () => {
   it('reads and parses collection url from clipboard', async () => {
