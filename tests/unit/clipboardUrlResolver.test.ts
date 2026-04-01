@@ -26,4 +26,18 @@ describe('resolveCollectionUrlFromClipboard', () => {
       '请先在 Edge 复制头歌 shixun_homework 页面链接',
     );
   });
+
+  it('throws fixed message when clipboard read fails', async () => {
+    const vscodeEnv = {
+      clipboard: {
+        readText: async () => {
+          throw new Error('clipboard unavailable');
+        },
+      },
+    };
+
+    await expect(resolveCollectionUrlFromClipboard(vscodeEnv)).rejects.toThrow(
+      '请先在 Edge 复制头歌 shixun_homework 页面链接',
+    );
+  });
 });

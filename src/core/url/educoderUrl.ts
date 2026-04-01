@@ -3,12 +3,18 @@ export interface EducoderCollectionUrl {
   categoryId: string;
 }
 
+const ALLOWED_HOSTS = new Set(['www.educoder.net', 'educoder.net']);
+
 export function parseEducoderCollectionUrl(raw: string): EducoderCollectionUrl {
   let parsed: URL;
 
   try {
     parsed = new URL(raw);
   } catch {
+    throw new Error('Invalid Educoder collection URL');
+  }
+
+  if (parsed.protocol !== 'https:' || !ALLOWED_HOSTS.has(parsed.hostname)) {
     throw new Error('Invalid Educoder collection URL');
   }
 

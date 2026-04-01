@@ -11,4 +11,12 @@ describe('parseEducoderCollectionUrl', () => {
   it('rejects unrelated urls', () => {
     expect(() => parseEducoderCollectionUrl('https://www.educoder.net/problems/1')).toThrow();
   });
+
+  it('rejects urls from the wrong host', () => {
+    expect(() => parseEducoderCollectionUrl('https://example.com/classrooms/ufr7sxlc/shixun_homework/1316861')).toThrow();
+  });
+
+  it('rejects urls with the wrong scheme', () => {
+    expect(() => parseEducoderCollectionUrl('http://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861')).toThrow();
+  });
 });
