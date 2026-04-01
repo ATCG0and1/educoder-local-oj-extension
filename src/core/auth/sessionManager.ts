@@ -21,6 +21,7 @@ export interface ResolveSessionDeps {
   context: SessionContextLike;
   validate(cookies: SessionCookies): Promise<boolean>;
   loadFromEdge?: () => Promise<SessionCookies | undefined>;
+  login?: () => Promise<SessionCookies | undefined>;
 }
 
 export function getCachedSession(context: SessionContextLike): SessionCookies | undefined {
@@ -38,6 +39,7 @@ export async function resolveSession({
   context,
   validate,
   loadFromEdge = loadSessionFromEdge,
+  login,
 }: ResolveSessionDeps): Promise<SessionCookies> {
   const cachedSession = getCachedSession(context);
   if (cachedSession && (await validate(cachedSession))) {
@@ -48,6 +50,14 @@ export async function resolveSession({
   if (edgeSession && (await validate(edgeSession))) {
     await setCachedSession(context, edgeSession);
     return edgeSession;
+  }
+
+  if (login) {
+    const loggedInSession = await login();
+    if (loggedInSession && (await validate(loggedInSession))) {
+      await setCachedSession(context, loggedInSession);
+      return loggedInSession;
+    }
   }
 
   throw new Error(SESSION_REQUIRED_ERROR_MESSAGE);

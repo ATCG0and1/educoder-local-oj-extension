@@ -7,6 +7,7 @@ const clipboardReadText = vi.fn(async () => '');
 const showOpenDialog = vi.fn(async () => undefined);
 const showInputBox = vi.fn(async () => undefined);
 const showErrorMessage = vi.fn(async () => undefined);
+const showInformationMessage = vi.fn(async () => undefined);
 
 const mockContext = {
   subscriptions: [],
@@ -38,6 +39,8 @@ function resetMockState(): void {
   showInputBox.mockResolvedValue(undefined);
   showErrorMessage.mockReset();
   showErrorMessage.mockResolvedValue(undefined);
+  showInformationMessage.mockReset();
+  showInformationMessage.mockResolvedValue(undefined);
 }
 
 vi.mock('vscode', () => ({
@@ -69,6 +72,7 @@ vi.mock('vscode', () => ({
     showOpenDialog,
     showInputBox,
     showErrorMessage,
+    showInformationMessage,
   },
   __mock: {
     context: mockContext,
@@ -78,6 +82,7 @@ vi.mock('vscode', () => ({
     showOpenDialog,
     showInputBox,
     showErrorMessage,
+    showInformationMessage,
     reset: resetMockState,
   },
 }));

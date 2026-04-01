@@ -5,6 +5,7 @@ import {
   resolveSession,
   type SessionCookies,
 } from './core/auth/sessionManager.js';
+import { promptEducoderLogin } from './core/auth/loginFlow.js';
 import { forceRunOfficialJudgeCommand } from './commands/forceRunOfficialJudge.js';
 import { openTaskCommand } from './commands/openTask.js';
 import { rerunFailedCases } from './commands/rerunFailedCases.js';
@@ -115,6 +116,7 @@ function createDefaultEducoderClient(context: vscode.ExtensionContext): Educoder
       resolveSession({
         context,
         validate: validateSessionShape,
+        login: () => promptEducoderLogin({ window: vscode.window }),
       }),
   });
 }

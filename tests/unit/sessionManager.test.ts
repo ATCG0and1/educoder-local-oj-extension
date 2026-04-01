@@ -70,4 +70,23 @@ describe('resolveSession', () => {
       '登录失效，请重新登录',
     );
   });
+
+  it('falls back to interactive login when cache and edge reuse both fail', async () => {
+    const context = createContext();
+    const loggedInSession: SessionCookies = {
+      _educoder_session: 'interactive-session',
+      autologin_trustie: 'interactive-trustie',
+    };
+    const validate = vi.fn(async (cookies: SessionCookies) => cookies === loggedInSession);
+    const loadFromEdge = vi.fn(async () => undefined);
+    const login = vi.fn(async () => loggedInSession);
+
+    await expect(resolveSession({ context, validate, loadFromEdge, login })).resolves.toEqual(
+      loggedInSession,
+    );
+
+    expect(loadFromEdge).toHaveBeenCalledTimes(1);
+    expect(login).toHaveBeenCalledTimes(1);
+    expect(context.globalState.get(SESSION_CACHE_KEY)).toEqual(loggedInSession);
+  });
 });
