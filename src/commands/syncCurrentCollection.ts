@@ -1,15 +1,16 @@
 import path from 'node:path';
 import type { ClipboardEnv } from '../core/url/clipboardUrlResolver.js';
-import { resolveCollectionUrlFromClipboard } from '../core/url/clipboardUrlResolver.js';
 import { getProductRoot, type RootResolverDeps } from '../core/config/rootResolver.js';
 import { syncCollectionIndex, type CollectionIndexClient } from '../core/sync/collectionSync.js';
 import { hydrateTask, type HiddenTestCase } from '../core/sync/taskHydrator.js';
 import { writeTaskDebugConfig } from '../core/workspace/vscodeConfigWriter.js';
 import type { CollectionManifest, HomeworkManifest, TaskManifest } from '../core/sync/manifestStore.js';
 import type { WorkspaceFile } from '../core/workspace/workspaceInit.js';
+import { resolveCollectionUrl, type ManualCollectionUrlInput } from '../core/url/urlInputFlow.js';
 
 export interface SyncCurrentCollectionDeps extends RootResolverDeps {
   clipboardEnv: ClipboardEnv;
+  input: ManualCollectionUrlInput;
   client: CollectionIndexClient;
   templateFiles?: WorkspaceFile[];
   hiddenTests?: HiddenTestCase[];
@@ -29,7 +30,10 @@ export interface SyncCurrentCollectionResult {
 export async function syncCurrentCollection(
   deps: SyncCurrentCollectionDeps,
 ): Promise<SyncCurrentCollectionResult> {
-  const { courseId, categoryId } = await resolveCollectionUrlFromClipboard(deps.clipboardEnv);
+  const { courseId, categoryId } = await resolveCollectionUrl({
+    clipboard: deps.clipboardEnv.clipboard,
+    input: deps.input,
+  });
   const productRoot = await getProductRoot(deps);
   const collectionRoot = path.join(productRoot, `classroom_${courseId}`, `shixun_homework_${categoryId}`);
 

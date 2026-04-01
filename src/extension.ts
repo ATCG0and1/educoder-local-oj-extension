@@ -1,4 +1,10 @@
 import * as vscode from 'vscode';
+import { EducoderClient } from './core/api/educoderClient.js';
+import { createFetchTransport } from './core/api/fetchTransport.js';
+import {
+  resolveSession,
+  type SessionCookies,
+} from './core/auth/sessionManager.js';
 import { forceRunOfficialJudgeCommand } from './commands/forceRunOfficialJudge.js';
 import { openTaskCommand } from './commands/openTask.js';
 import { rerunFailedCases } from './commands/rerunFailedCases.js';
@@ -21,11 +27,14 @@ const frozenCommands = [
 
 let activated = false;
 const commandServiceOverrides = new Map<string, (...args: unknown[]) => unknown>();
+let activeContext: vscode.ExtensionContext | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   if (activated) {
     return;
   }
+
+  activeContext = context;
 
   for (const commandId of frozenCommands) {
     const disposable = vscode.commands.registerCommand(commandId, (...args: unknown[]) =>
@@ -39,6 +48,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   activated = false;
+  activeContext = undefined;
 }
 
 export function configureCommandService(
@@ -65,9 +75,20 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
     return override(...args);
   }
 
+  const context = activeContext;
+  if (!context) {
+    throw new Error('Extension context is unavailable.');
+  }
+
   switch (commandId) {
     case 'educoderLocalOj.syncCurrentCollection':
-      throw new Error('syncCurrentCollection service is not configured.');
+      return syncCurrentCollection({
+        context,
+        window: vscode.window,
+        clipboardEnv: vscode.env,
+        input: vscode.window,
+        client: createDefaultEducoderClient(context),
+      });
     case 'educoderLocalOj.openTask':
       return taskRoot ? openTaskCommand(taskRoot) : undefined;
     case 'educoderLocalOj.runLocalJudge':
@@ -85,4 +106,19 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
     default:
       return undefined;
   }
+}
+
+function createDefaultEducoderClient(context: vscode.ExtensionContext): EducoderClient {
+  return new EducoderClient({
+    transport: createFetchTransport(),
+    resolveSession: () =>
+      resolveSession({
+        context,
+        validate: validateSessionShape,
+      }),
+  });
+}
+
+async function validateSessionShape(cookies: SessionCookies): Promise<boolean> {
+  return Boolean(cookies._educoder_session?.trim());
 }

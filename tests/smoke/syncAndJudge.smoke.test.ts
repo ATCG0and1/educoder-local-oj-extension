@@ -54,6 +54,9 @@ describe('sync and open task smoke flow', () => {
               'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0',
           },
         },
+        input: {
+          showInputBox: async () => undefined,
+        },
         client: {
           getCollectionIndex: async () => ({
             courseId: 'ufr7sxlc',
