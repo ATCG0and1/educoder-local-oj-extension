@@ -5,13 +5,11 @@ import { createFetchTransport } from './core/api/fetchTransport.js';
 import { HiddenTestFetchClient } from './core/api/hiddenTestFetchClient.js';
 import { HistoryFetchClient } from './core/api/historyFetchClient.js';
 import { PassedFetchClient } from './core/api/passedFetchClient.js';
+import { RepositoryFetchClient } from './core/api/repositoryFetchClient.js';
 import { SourceFetchClient } from './core/api/sourceFetchClient.js';
 import { TaskDetailClient } from './core/api/taskDetailClient.js';
 import { TemplateFetchClient } from './core/api/templateFetchClient.js';
-import {
-  resolveSession,
-  type SessionCookies,
-} from './core/auth/sessionManager.js';
+import { resolveSession, type SessionCookies } from './core/auth/sessionManager.js';
 import { promptEducoderLogin } from './core/auth/loginFlow.js';
 import {
   configureDefaultOfficialJudgeExecutor,
@@ -25,7 +23,9 @@ import { rollbackTemplate } from './commands/rollbackTemplate.js';
 import { restoreHistorySnapshot } from './commands/restoreHistorySnapshot.js';
 import { runLocalJudgeCommand } from './commands/runLocalJudge.js';
 import { runOfficialJudgeCommand } from './commands/runOfficialJudge.js';
+import { syncTaskAnswers } from './commands/syncTaskAnswers.js';
 import { syncTaskHistory } from './commands/syncTaskHistory.js';
+import { syncTaskRepository } from './commands/syncTaskRepository.js';
 import { syncCurrentCollection } from './commands/syncCurrentCollection.js';
 
 const frozenCommands = [
@@ -39,6 +39,8 @@ const frozenCommands = [
   'educoderLocalOj.rollbackPassed',
   'educoderLocalOj.syncTaskHistory',
   'educoderLocalOj.restoreHistorySnapshot',
+  'educoderLocalOj.syncTaskRepository',
+  'educoderLocalOj.syncTaskAnswers',
 ] as const;
 
 let activated = false;
@@ -109,9 +111,7 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
         client: createDefaultEducoderClient(context),
       });
     case 'educoderLocalOj.openTask':
-      return taskRoot
-        ? openTaskCommand(taskRoot, createDefaultOpenTaskDeps(context))
-        : undefined;
+      return taskRoot ? openTaskCommand(taskRoot, createDefaultOpenTaskDeps(context)) : undefined;
     case 'educoderLocalOj.runLocalJudge':
       return taskRoot ? runLocalJudgeCommand(taskRoot) : undefined;
     case 'educoderLocalOj.rerunFailedCases':
@@ -130,6 +130,10 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
       return taskRoot && queryIndex !== undefined
         ? restoreHistorySnapshot(taskRoot, queryIndex, createDefaultHistoryDeps(context))
         : undefined;
+    case 'educoderLocalOj.syncTaskRepository':
+      return taskRoot ? syncTaskRepository(taskRoot, createDefaultRepositoryDeps(context)) : undefined;
+    case 'educoderLocalOj.syncTaskAnswers':
+      return taskRoot ? syncTaskAnswers(taskRoot, createDefaultAnswerDeps(context)) : undefined;
     default:
       return undefined;
   }
@@ -172,6 +176,21 @@ function createDefaultHistoryDeps(context: vscode.ExtensionContext) {
   const client = createDefaultEducoderClient(context);
   return {
     historyClient: new HistoryFetchClient(client),
+  };
+}
+
+function createDefaultRepositoryDeps(context: vscode.ExtensionContext) {
+  const client = createDefaultEducoderClient(context);
+  return {
+    repositoryClient: new RepositoryFetchClient(client),
+    sourceClient: new SourceFetchClient(client),
+  };
+}
+
+function createDefaultAnswerDeps(context: vscode.ExtensionContext) {
+  const client = createDefaultEducoderClient(context);
+  return {
+    answerClient: new AnswerFetchClient(client),
   };
 }
 
