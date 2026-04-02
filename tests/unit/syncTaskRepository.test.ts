@@ -51,6 +51,7 @@ describe('syncTaskRepository', () => {
     });
 
     const repositoryClient = {
+      listRepository: vi.fn(),
       collectRepositoryTree: vi.fn(async () => [
         { path: 'test1', name: 'test1', type: 'tree' as const },
         { path: 'test1/tasks.h', name: 'tasks.h', type: 'blob' as const },
