@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { hydrateTask } from '../../src/core/sync/taskHydrator.js';
+import { hydrateTask, hydrateTaskFromRemote } from '../../src/core/sync/taskHydrator.js';
 
 const tempDirs: string[] = [];
 
@@ -33,6 +33,8 @@ describe('hydrateTask', () => {
       collectionRoot: rootDir,
       homeworkId: '3727439',
       taskId: 'fc7pz3fm6yjh',
+      homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
+      taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
       templateFiles: [
         { path: 'test1/test1.cpp', content: '#include <iostream>\n' },
       ],
@@ -54,6 +56,8 @@ describe('hydrateTask', () => {
       collectionRoot: rootDir,
       homeworkId: '3727439',
       taskId: 'fc7pz3fm6yjh',
+      homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
+      taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
       templateFiles: [
         { path: 'test1/tasks.h', content: '#pragma once\n' },
         { path: 'test1/test1.cpp', content: 'int main() { return 0; }\n' },
@@ -76,6 +80,8 @@ describe('hydrateTask', () => {
       collectionRoot: rootDir,
       homeworkId: '3727439',
       taskId: 'fc7pz3fm6yjh',
+      homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
+      taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
       templateFiles: [
         { path: 'test1/test1.cpp', content: 'template\n' },
       ],
@@ -87,7 +93,13 @@ describe('hydrateTask', () => {
         { path: 'reference_code.cpp', content: 'answer\n' },
       ],
       answerInfo: {
-        canView: true,
+        status: 3,
+        entries: [
+          {
+            answerId: 3567559,
+            name: '解题思路1',
+          },
+        ],
       },
       passedFiles: [
         { path: 'passed.cpp', content: 'passed\n' },
@@ -108,7 +120,7 @@ describe('hydrateTask', () => {
     ).resolves.toBe('out-2\n');
     await expect(
       readFile(path.join(layout.answerDir, 'answer_info.json'), 'utf8'),
-    ).resolves.toContain('"canView": true');
+    ).resolves.toContain('"status": 3');
     await expect(
       readFile(path.join(layout.answerDir, 'reference_code.cpp'), 'utf8'),
     ).resolves.toBe('answer\n');
@@ -124,5 +136,58 @@ describe('hydrateTask', () => {
     await expect(
       readFile(path.join(layout.metaDir, 'task.json'), 'utf8'),
     ).resolves.toContain('"taskId": "fc7pz3fm6yjh"');
+    await expect(
+      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
+    ).resolves.toContain('"templateReady": true');
+    await expect(
+      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
+    ).resolves.toContain('"passedReady": true');
+    await expect(
+      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
+    ).resolves.toContain('"answerEntryCount": 1');
+    await expect(
+      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
+    ).resolves.toContain('"historyFileCount": 1');
+  });
+
+  it('hydrates workspace files and task metadata from remote task/source/hidden clients', async () => {
+    const rootDir = await createTempRoot();
+
+    const result = await hydrateTaskFromRemote({
+      collectionRoot: rootDir,
+      homeworkId: '3727439',
+      taskId: 'fc7pz3fm6yjh',
+      homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
+      taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+      taskDetailClient: {
+        getTaskDetail: async () => ({
+          taskId: 'fc7pz3fm6yjh',
+          homeworkId: '3727439',
+          taskName: '基本实训：链表操作',
+          editablePaths: ['test1/tasks.h'],
+          testSets: [{ is_public: false, input: '1 2\n', output: '3\n' }],
+          raw: {},
+        }),
+      },
+      sourceClient: {
+        fetchSourceFiles: async () => [{ path: 'test1/tasks.h', content: '#pragma once\n' }],
+      },
+      hiddenTestClient: {
+        fetchHiddenTests: async () => [{ input: '1 2\n', output: '3\n' }],
+      },
+    });
+
+    await expect(
+      readFile(path.join(result.layout.workspaceDir, 'test1', 'tasks.h'), 'utf8'),
+    ).resolves.toBe('#pragma once\n');
+    await expect(
+      readFile(path.join(result.layout.metaDir, 'task.json'), 'utf8'),
+    ).resolves.toContain('"hiddenTestsCount": 1');
+    await expect(
+      exists(path.join(result.layout.vscodeDir, 'tasks.json')),
+    ).resolves.toBe(true);
+    await expect(
+      readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8'),
+    ).resolves.toContain('"templateReady": true');
   });
 });
