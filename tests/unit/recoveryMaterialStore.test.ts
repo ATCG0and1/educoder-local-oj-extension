@@ -30,8 +30,13 @@ describe('recoveryMaterialStore', () => {
       passedFileCount: 1,
       answerReady: true,
       answerEntryCount: 2,
+      unlockedAnswerCount: 1,
       historyReady: false,
       historyFileCount: 0,
+      repositoryReady: true,
+      repositoryFileCount: 4,
+      lastRepositorySyncAt: '2026-04-02T00:00:00.000Z',
+      lastAnswerSyncAt: '2026-04-02T00:05:00.000Z',
       updatedAt: '2026-04-02T00:00:00.000Z',
     });
 
@@ -42,12 +47,17 @@ describe('recoveryMaterialStore', () => {
       passedFileCount: 1,
       answerReady: true,
       answerEntryCount: 2,
+      unlockedAnswerCount: 1,
       historyReady: false,
       historyFileCount: 0,
+      repositoryReady: true,
+      repositoryFileCount: 4,
+      lastRepositorySyncAt: '2026-04-02T00:00:00.000Z',
+      lastAnswerSyncAt: '2026-04-02T00:05:00.000Z',
       updatedAt: '2026-04-02T00:00:00.000Z',
     });
     await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
-      '"answerEntryCount": 2',
+      '"repositoryFileCount": 4',
     );
   });
 });

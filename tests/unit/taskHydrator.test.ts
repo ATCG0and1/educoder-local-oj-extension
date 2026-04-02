@@ -35,12 +35,8 @@ describe('hydrateTask', () => {
       taskId: 'fc7pz3fm6yjh',
       homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
       taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
-      templateFiles: [
-        { path: 'test1/test1.cpp', content: '#include <iostream>\n' },
-      ],
-      hiddenTests: [
-        { input: '1 2\n', output: '3\n' },
-      ],
+      templateFiles: [{ path: 'test1/test1.cpp', content: '#include <iostream>\n' }],
+      hiddenTests: [{ input: '1 2\n', output: '3\n' }],
     });
 
     await expect(exists(layout.workspaceDir)).resolves.toBe(true);
@@ -65,15 +61,15 @@ describe('hydrateTask', () => {
       hiddenTests: [],
     });
 
-    await expect(
-      readFile(path.join(layout.workspaceDir, 'test1', 'test1.cpp'), 'utf8'),
-    ).resolves.toBe('int main() { return 0; }\n');
-    await expect(
-      readFile(path.join(layout.workspaceDir, 'test1', 'tasks.h'), 'utf8'),
-    ).resolves.toBe('#pragma once\n');
+    await expect(readFile(path.join(layout.workspaceDir, 'test1', 'test1.cpp'), 'utf8')).resolves.toBe(
+      'int main() { return 0; }\n',
+    );
+    await expect(readFile(path.join(layout.workspaceDir, 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      '#pragma once\n',
+    );
   });
 
-  it('writes hidden tests, answers, template snapshots, passed code, and history into _educoder', async () => {
+  it('writes hidden tests, answers, template snapshots, passed code, history, and repository snapshots into _educoder', async () => {
     const rootDir = await createTempRoot();
 
     const layout = await hydrateTask({
@@ -82,72 +78,46 @@ describe('hydrateTask', () => {
       taskId: 'fc7pz3fm6yjh',
       homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
       taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
-      templateFiles: [
-        { path: 'test1/test1.cpp', content: 'template\n' },
-      ],
+      templateFiles: [{ path: 'test1/test1.cpp', content: 'template\n' }],
       hiddenTests: [
         { input: 'in-1\n', output: 'out-1\n' },
         { input: 'in-2\n', output: 'out-2\n' },
       ],
-      answerFiles: [
-        { path: 'reference_code.cpp', content: 'answer\n' },
-      ],
+      answerFiles: [{ path: 'reference_code.cpp', content: 'answer\n' }],
+      unlockedAnswerFiles: [{ path: 'answer-3567559.md', content: '```cpp\nint main() {}\n```' }],
       answerInfo: {
         status: 3,
-        entries: [
-          {
-            answerId: 3567559,
-            name: '解题思路1',
-          },
-        ],
+        entries: [{ answerId: 3567559, name: '解题思路1' }],
       },
-      passedFiles: [
-        { path: 'passed.cpp', content: 'passed\n' },
+      passedFiles: [{ path: 'passed.cpp', content: 'passed\n' }],
+      historyFiles: [{ path: 'query_001.cpp', content: 'history\n' }],
+      repositoryNodes: [
+        { path: 'test1', name: 'test1', type: 'tree' },
+        { path: 'test1/test1.cpp', name: 'test1.cpp', type: 'blob' },
       ],
-      historyFiles: [
-        { path: 'query_001.cpp', content: 'history\n' },
-      ],
-      meta: {
-        taskId: 'fc7pz3fm6yjh',
-      },
+      repositoryFiles: [{ path: 'test1/test1.cpp', content: 'repo snapshot\n' }],
+      meta: { taskId: 'fc7pz3fm6yjh' },
     });
 
+    await expect(readFile(path.join(layout.hiddenTestsDir, 'case_001_input.txt'), 'utf8')).resolves.toBe('in-1\n');
+    await expect(readFile(path.join(layout.hiddenTestsDir, 'case_002_output.txt'), 'utf8')).resolves.toBe('out-2\n');
+    await expect(readFile(path.join(layout.answerDir, 'answer_info.json'), 'utf8')).resolves.toContain('"status": 3');
+    await expect(readFile(path.join(layout.answerDir, 'reference_code.cpp'), 'utf8')).resolves.toBe('answer\n');
+    await expect(readFile(path.join(layout.answerUnlockedDir, 'answer-3567559.md'), 'utf8')).resolves.toContain('int main');
+    await expect(readFile(path.join(layout.templateDir, 'test1', 'test1.cpp'), 'utf8')).resolves.toBe('template\n');
+    await expect(readFile(path.join(layout.passedDir, 'passed.cpp'), 'utf8')).resolves.toBe('passed\n');
+    await expect(readFile(path.join(layout.historyDir, 'query_001.cpp'), 'utf8')).resolves.toBe('history\n');
     await expect(
-      readFile(path.join(layout.hiddenTestsDir, 'case_001_input.txt'), 'utf8'),
-    ).resolves.toBe('in-1\n');
-    await expect(
-      readFile(path.join(layout.hiddenTestsDir, 'case_002_output.txt'), 'utf8'),
-    ).resolves.toBe('out-2\n');
-    await expect(
-      readFile(path.join(layout.answerDir, 'answer_info.json'), 'utf8'),
-    ).resolves.toContain('"status": 3');
-    await expect(
-      readFile(path.join(layout.answerDir, 'reference_code.cpp'), 'utf8'),
-    ).resolves.toBe('answer\n');
-    await expect(
-      readFile(path.join(layout.templateDir, 'test1', 'test1.cpp'), 'utf8'),
-    ).resolves.toBe('template\n');
-    await expect(
-      readFile(path.join(layout.passedDir, 'passed.cpp'), 'utf8'),
-    ).resolves.toBe('passed\n');
-    await expect(
-      readFile(path.join(layout.historyDir, 'query_001.cpp'), 'utf8'),
-    ).resolves.toBe('history\n');
-    await expect(
-      readFile(path.join(layout.metaDir, 'task.json'), 'utf8'),
-    ).resolves.toContain('"taskId": "fc7pz3fm6yjh"');
-    await expect(
-      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
-    ).resolves.toContain('"templateReady": true');
-    await expect(
-      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
-    ).resolves.toContain('"passedReady": true');
-    await expect(
-      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
-    ).resolves.toContain('"answerEntryCount": 1');
-    await expect(
-      readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8'),
-    ).resolves.toContain('"historyFileCount": 1');
+      readFile(path.join(layout.repositoryRemoteDir, 'test1', 'test1.cpp'), 'utf8'),
+    ).resolves.toBe('repo snapshot\n');
+    await expect(readFile(path.join(layout.repositoryDir, 'index.json'), 'utf8')).resolves.toContain('"fileCount": 1');
+    await expect(readFile(path.join(layout.metaDir, 'task.json'), 'utf8')).resolves.toContain('"taskId": "fc7pz3fm6yjh"');
+    await expect(readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain('"templateReady": true');
+    await expect(readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain('"passedReady": true');
+    await expect(readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain('"answerEntryCount": 1');
+    await expect(readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain('"unlockedAnswerCount": 1');
+    await expect(readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain('"repositoryFileCount": 1');
+    await expect(readFile(path.join(layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain('"historyFileCount": 1');
   });
 
   it('hydrates workspace files and task metadata from remote task/source/hidden clients', async () => {
@@ -184,40 +154,37 @@ describe('hydrateTask', () => {
       answerClient: {
         fetchAnswerInfo: async () => ({
           status: 3,
-          entries: [
-            {
-              answerId: 3567559,
-              name: '解题思路1',
-              content: '```cpp\nint main() {}\n```',
-            },
-          ],
+          entries: [{ answerId: 3567559, name: '解题思路1', content: '```cpp\nint main() {}\n```' }],
+        }),
+        unlockAnswer: async () => ({
+          answerId: 3567559,
+          content: '```cpp\nint main() {}\n```',
+          unlocked: true,
         }),
       },
     });
 
-    await expect(
-      readFile(path.join(result.layout.workspaceDir, 'test1', 'tasks.h'), 'utf8'),
-    ).resolves.toBe('current workspace\n');
-    await expect(
-      readFile(path.join(result.layout.templateDir, 'test1', 'tasks.h'), 'utf8'),
-    ).resolves.toBe('#pragma once\n');
-    await expect(
-      readFile(path.join(result.layout.passedDir, 'test1', 'tasks.h'), 'utf8'),
-    ).resolves.toBe('passed solution\n');
-    await expect(
-      readFile(path.join(result.layout.answerDir, 'answer_info.json'), 'utf8'),
-    ).resolves.toContain('"answerId": 3567559');
-    await expect(
-      readFile(path.join(result.layout.metaDir, 'task.json'), 'utf8'),
-    ).resolves.toContain('"hiddenTestsCount": 1');
-    await expect(
-      exists(path.join(result.layout.vscodeDir, 'tasks.json')),
-    ).resolves.toBe(true);
-    await expect(
-      readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8'),
-    ).resolves.toContain('"templateReady": true');
-    await expect(
-      readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8'),
-    ).resolves.toContain('"passedReady": true');
+    await expect(readFile(path.join(result.layout.workspaceDir, 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      'current workspace\n',
+    );
+    await expect(readFile(path.join(result.layout.templateDir, 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      '#pragma once\n',
+    );
+    await expect(readFile(path.join(result.layout.passedDir, 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      'passed solution\n',
+    );
+    await expect(readFile(path.join(result.layout.answerDir, 'answer_info.json'), 'utf8')).resolves.toContain(
+      '"answerId": 3567559',
+    );
+    await expect(readFile(path.join(result.layout.metaDir, 'task.json'), 'utf8')).resolves.toContain(
+      '"hiddenTestsCount": 1',
+    );
+    await expect(exists(path.join(result.layout.vscodeDir, 'tasks.json'))).resolves.toBe(true);
+    await expect(readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain(
+      '"templateReady": true',
+    );
+    await expect(readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8')).resolves.toContain(
+      '"passedReady": true',
+    );
   });
 });

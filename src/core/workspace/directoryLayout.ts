@@ -24,9 +24,12 @@ export interface TaskLayoutPaths {
   metaDir: string;
   hiddenTestsDir: string;
   answerDir: string;
+  answerUnlockedDir: string;
   templateDir: string;
   passedDir: string;
   historyDir: string;
+  repositoryDir: string;
+  repositoryRemoteDir: string;
   reportsDir: string;
   vscodeDir: string;
 }
@@ -46,6 +49,8 @@ export function getTaskLayoutPaths({
     taskDirName ?? taskId,
   );
   const educoderDir = path.join(taskRoot, '_educoder');
+  const answerDir = path.join(educoderDir, 'answer');
+  const repositoryDir = path.join(educoderDir, 'repository');
 
   return {
     taskRoot,
@@ -53,10 +58,13 @@ export function getTaskLayoutPaths({
     educoderDir,
     metaDir: path.join(educoderDir, 'meta'),
     hiddenTestsDir: path.join(educoderDir, 'tests', 'hidden'),
-    answerDir: path.join(educoderDir, 'answer'),
+    answerDir,
+    answerUnlockedDir: path.join(answerDir, 'unlocked'),
     templateDir: path.join(educoderDir, 'template'),
     passedDir: path.join(educoderDir, 'passed'),
     historyDir: path.join(educoderDir, 'history'),
+    repositoryDir,
+    repositoryRemoteDir: path.join(repositoryDir, 'remote'),
     reportsDir: path.join(taskRoot, 'reports'),
     vscodeDir: path.join(taskRoot, '.vscode'),
   };

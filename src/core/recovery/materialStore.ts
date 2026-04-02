@@ -9,8 +9,13 @@ export interface RecoveryMetadata {
   passedFileCount: number;
   answerReady: boolean;
   answerEntryCount: number;
+  unlockedAnswerCount: number;
   historyReady: boolean;
   historyFileCount: number;
+  repositoryReady: boolean;
+  repositoryFileCount: number;
+  lastRepositorySyncAt?: string;
+  lastAnswerSyncAt?: string;
   updatedAt: string;
 }
 
@@ -18,8 +23,12 @@ export interface BuildRecoveryMetadataInput {
   templateFiles?: WorkspaceFile[];
   passedFiles?: WorkspaceFile[];
   answerInfo?: unknown;
+  unlockedAnswerFiles?: WorkspaceFile[];
   historyFiles?: WorkspaceFile[];
+  repositoryFiles?: WorkspaceFile[];
   updatedAt?: string;
+  lastRepositorySyncAt?: string;
+  lastAnswerSyncAt?: string;
 }
 
 export async function writeRecoveryMetadata(
@@ -50,6 +59,8 @@ export function buildRecoveryMetadata(input: BuildRecoveryMetadataInput): Recove
   const passedFileCount = input.passedFiles?.length ?? 0;
   const historyFileCount = input.historyFiles?.length ?? 0;
   const answerEntryCount = extractAnswerEntryCount(input.answerInfo);
+  const unlockedAnswerCount = input.unlockedAnswerFiles?.length ?? 0;
+  const repositoryFileCount = input.repositoryFiles?.length ?? 0;
 
   return {
     templateReady: templateFileCount > 0,
@@ -58,8 +69,13 @@ export function buildRecoveryMetadata(input: BuildRecoveryMetadataInput): Recove
     passedFileCount,
     answerReady: answerEntryCount > 0,
     answerEntryCount,
+    unlockedAnswerCount,
     historyReady: historyFileCount > 0,
     historyFileCount,
+    repositoryReady: repositoryFileCount > 0,
+    repositoryFileCount,
+    lastRepositorySyncAt: input.lastRepositorySyncAt,
+    lastAnswerSyncAt: input.lastAnswerSyncAt,
     updatedAt: input.updatedAt ?? new Date().toISOString(),
   };
 }

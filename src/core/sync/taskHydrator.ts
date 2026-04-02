@@ -1,12 +1,14 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { AnswerFetchClientLike } from '../api/answerFetchClient.js';
 import path from 'node:path';
+import type { RepositoryNode } from '../api/repositoryFetchClient.js';
 import type { HiddenTestFetchClientLike } from '../api/hiddenTestFetchClient.js';
 import type { PassedFetchClientLike } from '../api/passedFetchClient.js';
 import type { SourceFetchClientLike } from '../api/sourceFetchClient.js';
 import type { TaskDetailClientLike, TaskDetailSummary } from '../api/taskDetailClient.js';
 import type { TemplateFetchClientLike } from '../api/templateFetchClient.js';
 import { buildRecoveryMetadata, writeRecoveryMetadata } from '../recovery/materialStore.js';
+import { writeRepositorySnapshot } from '../recovery/repositoryStore.js';
 import { getTaskLayoutPaths, type TaskLayoutPaths } from '../workspace/directoryLayout.js';
 import { writeTaskDebugConfig } from '../workspace/vscodeConfigWriter.js';
 import { writeWorkspaceFiles, type WorkspaceFile } from '../workspace/workspaceInit.js';
@@ -26,9 +28,12 @@ export interface HydrateTaskInput {
   templateFiles: WorkspaceFile[];
   hiddenTests: HiddenTestCase[];
   answerFiles?: WorkspaceFile[];
+  unlockedAnswerFiles?: WorkspaceFile[];
   answerInfo?: unknown;
   passedFiles?: WorkspaceFile[];
   historyFiles?: WorkspaceFile[];
+  repositoryNodes?: RepositoryNode[];
+  repositoryFiles?: WorkspaceFile[];
   meta?: unknown;
 }
 
@@ -62,9 +67,12 @@ export async function hydrateTask(input: HydrateTaskInput): Promise<TaskLayoutPa
     mkdir(layout.metaDir, { recursive: true }),
     mkdir(layout.hiddenTestsDir, { recursive: true }),
     mkdir(layout.answerDir, { recursive: true }),
+    mkdir(layout.answerUnlockedDir, { recursive: true }),
     mkdir(layout.templateDir, { recursive: true }),
     mkdir(layout.passedDir, { recursive: true }),
     mkdir(layout.historyDir, { recursive: true }),
+    mkdir(layout.repositoryDir, { recursive: true }),
+    mkdir(layout.repositoryRemoteDir, { recursive: true }),
     mkdir(layout.reportsDir, { recursive: true }),
     mkdir(layout.vscodeDir, { recursive: true }),
   ]);
@@ -73,18 +81,27 @@ export async function hydrateTask(input: HydrateTaskInput): Promise<TaskLayoutPa
     writeWorkspaceFiles(layout.workspaceDir, workspaceFiles),
     writeWorkspaceFiles(layout.templateDir, input.templateFiles),
     writeWorkspaceFiles(layout.answerDir, input.answerFiles ?? []),
+    writeWorkspaceFiles(layout.answerUnlockedDir, input.unlockedAnswerFiles ?? []),
     writeWorkspaceFiles(layout.passedDir, input.passedFiles ?? []),
     writeWorkspaceFiles(layout.historyDir, input.historyFiles ?? []),
     writeHiddenTests(layout.hiddenTestsDir, input.hiddenTests),
     writeOptionalJson(path.join(layout.answerDir, 'answer_info.json'), input.answerInfo),
     writeOptionalJson(path.join(layout.metaDir, 'task.json'), input.meta),
+    input.repositoryNodes || input.repositoryFiles
+      ? writeRepositorySnapshot(layout.taskRoot, {
+          nodes: input.repositoryNodes ?? [],
+          files: input.repositoryFiles ?? [],
+        })
+      : Promise.resolve(),
     writeRecoveryMetadata(
       layout.taskRoot,
       buildRecoveryMetadata({
         templateFiles: input.templateFiles,
         passedFiles: input.passedFiles,
         answerInfo: input.answerInfo,
+        unlockedAnswerFiles: input.unlockedAnswerFiles,
         historyFiles: input.historyFiles,
+        repositoryFiles: input.repositoryFiles,
       }),
     ),
   ]);
@@ -123,11 +140,9 @@ export async function hydrateTaskFromRemote(
           filePaths: detail.editablePaths,
         })
       : [],
-    input.answerClient?.fetchAnswerInfo({
-      taskId: input.taskId,
-    }),
+    input.answerClient?.fetchAnswerInfo({ taskId: input.taskId }),
   ]);
-  const answerFiles = materializeAnswerFiles(answerInfo);
+  const unlockedAnswerFiles = materializeUnlockedAnswerFiles(answerInfo);
 
   const layout = await hydrateTask({
     collectionRoot: input.collectionRoot,
@@ -138,7 +153,7 @@ export async function hydrateTaskFromRemote(
     workspaceFiles,
     templateFiles,
     hiddenTests,
-    answerFiles,
+    unlockedAnswerFiles,
     answerInfo,
     passedFiles,
     meta: {
@@ -180,12 +195,12 @@ async function writeOptionalJson(filePath: string, data: unknown): Promise<void>
   await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-function materializeAnswerFiles(answerInfo: unknown): WorkspaceFile[] {
+function materializeUnlockedAnswerFiles(answerInfo: unknown): WorkspaceFile[] {
   if (!answerInfo || typeof answerInfo !== 'object') {
     return [];
   }
 
-  const entries = (answerInfo as { entries?: Array<{ answerId?: number; name?: string; content?: string }> }).entries;
+  const entries = (answerInfo as { entries?: Array<{ answerId?: number; content?: string }> }).entries;
   if (!Array.isArray(entries)) {
     return [];
   }
