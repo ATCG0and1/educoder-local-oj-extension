@@ -21,7 +21,7 @@ export interface DashboardCommandMessage {
 }
 
 export interface HandleDashboardMessageDeps {
-  executeCommand: (command: string, taskRoot?: string) => Promise<unknown>;
+  executeCommand: (command: string, taskRoot?: string) => PromiseLike<unknown>;
   refreshTask: (taskRoot: string) => Promise<void>;
 }
 
