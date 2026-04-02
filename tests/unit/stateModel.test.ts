@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  APPROVED_TASK_STATES,
-  buildTaskStateModel,
-} from '../../src/core/ui/stateModel.js';
+import { APPROVED_TASK_STATES, buildTaskStateModel } from '../../src/core/ui/stateModel.js';
 
 describe('stateModel', () => {
   it('exposes only the seven approved frozen task states', () => {
@@ -29,8 +26,13 @@ describe('stateModel', () => {
           passedFileCount: 1,
           answerReady: true,
           answerEntryCount: 2,
+          unlockedAnswerCount: 1,
           historyReady: true,
           historyFileCount: 1,
+          repositoryReady: true,
+          repositoryFileCount: 4,
+          lastRepositorySyncAt: '2026-04-02T00:00:00.000Z',
+          lastAnswerSyncAt: '2026-04-02T00:05:00.000Z',
           updatedAt: '2026-04-02T00:00:00.000Z',
         },
         historyEntryCount: 1,
@@ -42,8 +44,13 @@ describe('stateModel', () => {
       templateReady: true,
       passedReady: true,
       answerEntryCount: 2,
+      unlockedAnswerCount: 1,
+      repositoryReady: true,
+      repositoryFileCount: 4,
       historyEntryCount: 1,
       lastRecoverySyncAt: '2026-04-02T00:00:00.000Z',
+      lastRepositorySyncAt: '2026-04-02T00:00:00.000Z',
+      lastAnswerSyncAt: '2026-04-02T00:05:00.000Z',
     });
     expect(
       buildTaskStateModel({
@@ -56,8 +63,11 @@ describe('stateModel', () => {
           passedFileCount: 0,
           answerReady: false,
           answerEntryCount: 0,
+          unlockedAnswerCount: 0,
           historyReady: false,
           historyFileCount: 0,
+          repositoryReady: false,
+          repositoryFileCount: 0,
           updatedAt: '2026-04-02T00:00:00.000Z',
         },
       }),
@@ -66,6 +76,7 @@ describe('stateModel', () => {
       readiness: 'workspace_only',
       templateReady: true,
       passedReady: false,
+      repositoryReady: false,
     });
     expect(
       buildTaskStateModel({

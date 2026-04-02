@@ -41,8 +41,13 @@ export interface TaskStateModel {
   templateReady: boolean;
   passedReady: boolean;
   answerEntryCount: number;
+  unlockedAnswerCount: number;
+  repositoryReady: boolean;
+  repositoryFileCount: number;
   historyEntryCount: number;
   lastRecoverySyncAt?: string;
+  lastRepositorySyncAt?: string;
+  lastAnswerSyncAt?: string;
   lastLocalJudgeAt?: string;
   lastOfficialJudgeAt?: string;
 }
@@ -62,8 +67,13 @@ export function buildTaskStateModel(input: TaskStateModelInput): TaskStateModel 
     templateReady: input.recoveryMetadata?.templateReady ?? false,
     passedReady: input.recoveryMetadata?.passedReady ?? false,
     answerEntryCount: input.recoveryMetadata?.answerEntryCount ?? 0,
+    unlockedAnswerCount: input.recoveryMetadata?.unlockedAnswerCount ?? 0,
+    repositoryReady: input.recoveryMetadata?.repositoryReady ?? false,
+    repositoryFileCount: input.recoveryMetadata?.repositoryFileCount ?? 0,
     historyEntryCount: input.historyEntryCount ?? 0,
     lastRecoverySyncAt: input.recoveryMetadata?.updatedAt,
+    lastRepositorySyncAt: input.recoveryMetadata?.lastRepositorySyncAt,
+    lastAnswerSyncAt: input.recoveryMetadata?.lastAnswerSyncAt,
     lastLocalJudgeAt: input.localReport?.generatedAt,
     lastOfficialJudgeAt: input.officialReport?.generatedAt ?? input.officialReport?.cachedAt,
   };
@@ -153,10 +163,6 @@ async function hasWorkspace(taskRoot: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-async function hasHiddenTests(taskRoot: string): Promise<boolean> {
-  return (await countHiddenTests(taskRoot)) > 0;
 }
 
 async function countHiddenTests(taskRoot: string): Promise<number> {

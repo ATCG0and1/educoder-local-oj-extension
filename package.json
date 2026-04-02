@@ -24,7 +24,9 @@
     "onCommand:educoderLocalOj.syncTaskHistory",
     "onCommand:educoderLocalOj.restoreHistorySnapshot",
     "onCommand:educoderLocalOj.syncTaskRepository",
-    "onCommand:educoderLocalOj.syncTaskAnswers"
+    "onCommand:educoderLocalOj.syncTaskAnswers",
+    "onCommand:educoderLocalOj.compareWithTemplate",
+    "onCommand:educoderLocalOj.compareWithAnswer"
   ],
   "main": "./dist/src/extension.js",
   "repository": {
@@ -44,7 +46,9 @@
       { "command": "educoderLocalOj.syncTaskHistory", "title": "Educoder Local OJ: Sync Task History" },
       { "command": "educoderLocalOj.restoreHistorySnapshot", "title": "Educoder Local OJ: Restore History Snapshot" },
       { "command": "educoderLocalOj.syncTaskRepository", "title": "Educoder Local OJ: Sync Full Repository" },
-      { "command": "educoderLocalOj.syncTaskAnswers", "title": "Educoder Local OJ: Sync Answers" }
+      { "command": "educoderLocalOj.syncTaskAnswers", "title": "Educoder Local OJ: Sync Answers" },
+      { "command": "educoderLocalOj.compareWithTemplate", "title": "Educoder Local OJ: Compare With Template" },
+      { "command": "educoderLocalOj.compareWithAnswer", "title": "Educoder Local OJ: Compare With Answer" }
     ]
   },
   "scripts": {

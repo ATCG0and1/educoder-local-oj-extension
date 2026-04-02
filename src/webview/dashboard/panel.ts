@@ -48,6 +48,10 @@ function renderDashboardHtml(model: DashboardPanelModel): string {
       .home-card,.task-card { background:#1f2937; border-radius:12px; padding:16px; margin-bottom:16px; border:1px solid #374151; }
       .pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
       .pill { display:inline-flex; padding:4px 10px; border-radius:999px; background:#0f172a; border:1px solid #475569; font-size:12px; }
+      .action-group { margin-top:16px; }
+      .action-group h3 { margin:0 0 8px 0; font-size:14px; }
+      .action-group ul { margin:0; padding-left:18px; color:#cbd5e1; }
+      .action-group li { margin:4px 0; }
     </style>
   </head>
   <body>

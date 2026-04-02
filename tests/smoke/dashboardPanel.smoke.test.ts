@@ -31,7 +31,7 @@ afterEach(async () => {
 });
 
 describe('dashboard panel smoke', () => {
-  it('opens a dashboard panel that shows hidden test readiness', async () => {
+  it('opens a dashboard panel that shows hidden test readiness and learning material state', async () => {
     const taskRoot = await createTempTaskRoot();
     const vscodeMock = (vscode as any).__mock;
 
@@ -90,6 +90,11 @@ describe('dashboard panel smoke', () => {
           status: 3,
           entries: [{ answerId: 3567559, name: '解题思路1' }],
         }),
+        unlockAnswer: async () => ({
+          answerId: 3567559,
+          content: '```cpp\nint main() { return 0; }\n```',
+          unlocked: true,
+        }),
       },
     });
 
@@ -99,6 +104,10 @@ describe('dashboard panel smoke', () => {
     expect(panel.webview.html).toContain('template: ready');
     expect(panel.webview.html).toContain('passed: ready');
     expect(panel.webview.html).toContain('answer: 1');
+    expect(panel.webview.html).toContain('answer unlocked: 0');
+    expect(panel.webview.html).toContain('repo: missing');
     expect(panel.webview.html).toContain('history: 1');
+    expect(panel.webview.html).toContain('Sync Full Repository');
+    expect(panel.webview.html).toContain('Sync Answers');
   });
 });

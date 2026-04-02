@@ -1,20 +1,6 @@
 import * as vscode from 'vscode';
-import { AnswerFetchClient } from './core/api/answerFetchClient.js';
-import { EducoderClient } from './core/api/educoderClient.js';
-import { createFetchTransport } from './core/api/fetchTransport.js';
-import { HiddenTestFetchClient } from './core/api/hiddenTestFetchClient.js';
-import { HistoryFetchClient } from './core/api/historyFetchClient.js';
-import { PassedFetchClient } from './core/api/passedFetchClient.js';
-import { RepositoryFetchClient } from './core/api/repositoryFetchClient.js';
-import { SourceFetchClient } from './core/api/sourceFetchClient.js';
-import { TaskDetailClient } from './core/api/taskDetailClient.js';
-import { TemplateFetchClient } from './core/api/templateFetchClient.js';
-import { resolveSession, type SessionCookies } from './core/auth/sessionManager.js';
-import { promptEducoderLogin } from './core/auth/loginFlow.js';
-import {
-  configureDefaultOfficialJudgeExecutor,
-  createOfficialJudgeExecutor,
-} from './core/remote/officialJudgeExecutor.js';
+import { compareWithAnswer } from './commands/compareWithAnswer.js';
+import { compareWithTemplate } from './commands/compareWithTemplate.js';
 import { forceRunOfficialJudgeCommand } from './commands/forceRunOfficialJudge.js';
 import { openTaskCommand } from './commands/openTask.js';
 import { rerunFailedCases } from './commands/rerunFailedCases.js';
@@ -27,6 +13,22 @@ import { syncTaskAnswers } from './commands/syncTaskAnswers.js';
 import { syncTaskHistory } from './commands/syncTaskHistory.js';
 import { syncTaskRepository } from './commands/syncTaskRepository.js';
 import { syncCurrentCollection } from './commands/syncCurrentCollection.js';
+import { AnswerFetchClient } from './core/api/answerFetchClient.js';
+import { EducoderClient } from './core/api/educoderClient.js';
+import { createFetchTransport } from './core/api/fetchTransport.js';
+import { HiddenTestFetchClient } from './core/api/hiddenTestFetchClient.js';
+import { HistoryFetchClient } from './core/api/historyFetchClient.js';
+import { PassedFetchClient } from './core/api/passedFetchClient.js';
+import { RepositoryFetchClient } from './core/api/repositoryFetchClient.js';
+import { SourceFetchClient } from './core/api/sourceFetchClient.js';
+import { TaskDetailClient } from './core/api/taskDetailClient.js';
+import { TemplateFetchClient } from './core/api/templateFetchClient.js';
+import { promptEducoderLogin } from './core/auth/loginFlow.js';
+import { resolveSession, type SessionCookies } from './core/auth/sessionManager.js';
+import {
+  configureDefaultOfficialJudgeExecutor,
+  createOfficialJudgeExecutor,
+} from './core/remote/officialJudgeExecutor.js';
 
 const frozenCommands = [
   'educoderLocalOj.syncCurrentCollection',
@@ -41,6 +43,8 @@ const frozenCommands = [
   'educoderLocalOj.restoreHistorySnapshot',
   'educoderLocalOj.syncTaskRepository',
   'educoderLocalOj.syncTaskAnswers',
+  'educoderLocalOj.compareWithTemplate',
+  'educoderLocalOj.compareWithAnswer',
 ] as const;
 
 let activated = false;
@@ -89,7 +93,6 @@ export function resetCommandServices(): void {
 
 async function runCommand(commandId: string, args: unknown[]): Promise<unknown> {
   const taskRoot = typeof args[0] === 'string' ? args[0] : undefined;
-  const queryIndex = typeof args[1] === 'number' ? args[1] : undefined;
   const override = commandServiceOverrides.get(commandId);
 
   if (override) {
@@ -126,14 +129,25 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
       return taskRoot ? rollbackPassed(taskRoot, createDefaultRollbackDeps(context)) : undefined;
     case 'educoderLocalOj.syncTaskHistory':
       return taskRoot ? syncTaskHistory(taskRoot, createDefaultHistoryDeps(context)) : undefined;
-    case 'educoderLocalOj.restoreHistorySnapshot':
+    case 'educoderLocalOj.restoreHistorySnapshot': {
+      const queryIndex = typeof args[1] === 'number' ? args[1] : undefined;
       return taskRoot && queryIndex !== undefined
         ? restoreHistorySnapshot(taskRoot, queryIndex, createDefaultHistoryDeps(context))
         : undefined;
+    }
     case 'educoderLocalOj.syncTaskRepository':
       return taskRoot ? syncTaskRepository(taskRoot, createDefaultRepositoryDeps(context)) : undefined;
     case 'educoderLocalOj.syncTaskAnswers':
       return taskRoot ? syncTaskAnswers(taskRoot, createDefaultAnswerDeps(context)) : undefined;
+    case 'educoderLocalOj.compareWithTemplate': {
+      const relativePath = typeof args[1] === 'string' ? args[1] : undefined;
+      return taskRoot ? compareWithTemplate(taskRoot, relativePath) : undefined;
+    }
+    case 'educoderLocalOj.compareWithAnswer': {
+      const relativePath = typeof args[1] === 'string' ? args[1] : undefined;
+      const answerId = typeof args[2] === 'number' ? args[2] : undefined;
+      return taskRoot ? compareWithAnswer(taskRoot, relativePath, answerId) : undefined;
+    }
     default:
       return undefined;
   }
