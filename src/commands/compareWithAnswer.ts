@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as vscode from 'vscode';
 
@@ -23,10 +23,36 @@ export async function compareWithAnswer(
   }
 
   const leftPath = path.join(taskRoot, 'workspace', targetPath);
-  const rightPath = path.join(taskRoot, '_educoder', 'answer', 'unlocked', `answer-${resolvedAnswerId}.md`);
+  const unlockedPath = path.join(taskRoot, '_educoder', 'answer', 'unlocked', `answer-${resolvedAnswerId}.md`);
+  const rightPath = await resolveAnswerComparePath(taskRoot, targetPath, resolvedAnswerId, unlockedPath);
   const title = `Answer Compare: ${targetPath} ↔ answer-${resolvedAnswerId}`;
 
   await (deps.openDiff ?? defaultOpenDiff)(leftPath, rightPath, title);
+}
+
+export function extractFirstCodeBlock(markdown: string): string | undefined {
+  const match = /```[^\r\n]*\r?\n([\s\S]*?)\r?\n```/.exec(markdown);
+  return match?.[1];
+}
+
+async function resolveAnswerComparePath(
+  taskRoot: string,
+  relativePath: string,
+  answerId: number,
+  unlockedPath: string,
+): Promise<string> {
+  const markdown = await readFile(unlockedPath, 'utf8');
+  const extracted = extractFirstCodeBlock(markdown);
+  if (!extracted) {
+    return unlockedPath;
+  }
+
+  const extension = path.extname(relativePath) || '.txt';
+  const extractedDir = path.join(taskRoot, '_educoder', 'answer', 'extracted');
+  const extractedPath = path.join(extractedDir, `answer-${answerId}${extension}`);
+  await mkdir(extractedDir, { recursive: true });
+  await writeFile(extractedPath, `${extracted}\n`, 'utf8');
+  return extractedPath;
 }
 
 async function defaultOpenDiff(leftPath: string, rightPath: string, title: string): Promise<unknown> {
@@ -39,7 +65,9 @@ async function defaultOpenDiff(leftPath: string, rightPath: string, title: strin
 }
 
 async function findFirstRelativeFile(rootDir: string, prefix = ''): Promise<string | undefined> {
-  const entries = await readdir(rootDir, { withFileTypes: true });
+  const entries = await import('node:fs/promises').then(({ readdir }) =>
+    readdir(rootDir, { withFileTypes: true }),
+  );
   for (const entry of entries) {
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isFile()) {
@@ -58,7 +86,9 @@ async function findFirstRelativeFile(rootDir: string, prefix = ''): Promise<stri
 }
 
 async function findFirstAnswerId(unlockedDir: string): Promise<number | undefined> {
-  const entries = await readdir(unlockedDir, { withFileTypes: true });
+  const entries = await import('node:fs/promises').then(({ readdir }) =>
+    readdir(unlockedDir, { withFileTypes: true }),
+  );
   for (const entry of entries) {
     if (!entry.isFile()) {
       continue;

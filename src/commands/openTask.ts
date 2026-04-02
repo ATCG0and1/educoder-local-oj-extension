@@ -58,6 +58,7 @@ export async function openTaskCommand(
     totalTasks: model.localCaseCount,
     completedTasks: model.state === '官方评测已过（通关）' ? 1 : 0,
     task: model,
+    taskRoot,
   });
   return model;
 }

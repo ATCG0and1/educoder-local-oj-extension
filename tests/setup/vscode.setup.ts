@@ -17,6 +17,7 @@ const createWebviewPanel = vi.fn(
     options: Record<string, unknown>,
   ) => {
     let disposeListener: (() => void) | undefined;
+    let messageListener: ((message: unknown) => void) | undefined;
     const panel = {
       viewType,
       title,
@@ -24,6 +25,10 @@ const createWebviewPanel = vi.fn(
       options,
       webview: {
         html: '',
+        onDidReceiveMessage: (listener: (message: unknown) => void) => {
+          messageListener = listener;
+          return { dispose: vi.fn() };
+        },
       },
       reveal: vi.fn(),
       onDidDispose: (listener: () => void) => {
@@ -32,6 +37,9 @@ const createWebviewPanel = vi.fn(
       },
       dispose: () => {
         disposeListener?.();
+      },
+      __dispatchMessage: (message: unknown) => {
+        messageListener?.(message);
       },
     };
     createdPanels.push(panel);
@@ -89,7 +97,7 @@ vi.mock('vscode', () => ({
     executeCommand: async (command: string, ...args: unknown[]) => {
       const handler = registeredCommands.get(command);
       if (!handler) {
-        throw new Error(`Command not found: ${command}`);
+        return undefined;
       }
 
       return handler(...args);
@@ -109,6 +117,9 @@ vi.mock('vscode', () => ({
   },
   ViewColumn: {
     Active: 1,
+  },
+  Uri: {
+    file: (fsPath: string) => ({ fsPath, scheme: 'file' }),
   },
   __mock: {
     context: mockContext,

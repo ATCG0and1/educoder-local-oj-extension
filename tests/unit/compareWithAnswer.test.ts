@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { compareWithAnswer } from '../../src/commands/compareWithAnswer.js';
+import { compareWithAnswer, extractFirstCodeBlock } from '../../src/commands/compareWithAnswer.js';
 
 const tempDirs: string[] = [];
 
@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 describe('compareWithAnswer', () => {
-  it('opens a diff between workspace and unlocked answer files', async () => {
+  it('extracts the first fenced code block and diffs against the extracted code file', async () => {
     const taskRoot = await createTempTaskRoot();
     await import('node:fs/promises').then(({ mkdir }) =>
       Promise.all([
@@ -28,17 +28,23 @@ describe('compareWithAnswer', () => {
     await writeFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'current\n', 'utf8');
     await writeFile(
       path.join(taskRoot, '_educoder', 'answer', 'unlocked', 'answer-3567559.md'),
-      '```cpp\nint main() { return 0; }\n```',
+      '说明\n```cpp\nint main() { return 0; }\n```\n总结',
       'utf8',
     );
 
     const openDiff = vi.fn(async () => undefined);
     await compareWithAnswer(taskRoot, 'test1/tasks.h', 3567559, { openDiff });
 
+    const extractedPath = path.join(taskRoot, '_educoder', 'answer', 'extracted', 'answer-3567559.h');
     expect(openDiff).toHaveBeenCalledWith(
       path.join(taskRoot, 'workspace', 'test1', 'tasks.h'),
-      path.join(taskRoot, '_educoder', 'answer', 'unlocked', 'answer-3567559.md'),
+      extractedPath,
       'Answer Compare: test1/tasks.h ↔ answer-3567559',
     );
+    await expect(readFile(extractedPath, 'utf8')).resolves.toBe('int main() { return 0; }\n');
+  });
+
+  it('extractFirstCodeBlock returns undefined when no fenced code exists', () => {
+    expect(extractFirstCodeBlock('plain markdown only')).toBeUndefined();
   });
 });
