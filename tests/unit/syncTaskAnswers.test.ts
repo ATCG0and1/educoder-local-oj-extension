@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 describe('syncTaskAnswers', () => {
-  it('fetches answer info, unlocks answer bodies, and updates recovery metadata', async () => {
+  it('fetches answer info, unlocks answer bodies, updates recovery metadata, and generates a learning index', async () => {
     const taskRoot = await createTempTaskRoot();
     await writeJson(path.join(taskRoot, 'task.manifest.json'), {
       taskId: 'fc7pz3fm6yjh',
@@ -42,7 +42,7 @@ describe('syncTaskAnswers', () => {
     const answerClient = {
       fetchAnswerInfo: vi.fn(async () => ({
         status: 3,
-        entries: [{ answerId: 3567559, name: '解题思路1' }],
+        entries: [{ answerId: 3567559, name: '解题思路1', score: 50, ratio: 10 }],
       })),
       unlockAnswer: vi.fn(async () => ({
         answerId: 3567559,
@@ -66,6 +66,15 @@ describe('syncTaskAnswers', () => {
     ).resolves.toContain('int main');
     await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
       '"unlockedAnswerCount": 1',
+    );
+    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'index.md'), 'utf8')).resolves.toContain(
+      '# 答案学习索引',
+    );
+    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'index.md'), 'utf8')).resolves.toContain(
+      '解题思路1',
+    );
+    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'index.md'), 'utf8')).resolves.toContain(
+      'unlocked/answer-3567559.md',
     );
   });
 });
