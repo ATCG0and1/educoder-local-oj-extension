@@ -30,6 +30,7 @@ export interface LocalJudgeSummary {
 }
 
 export interface LocalJudgeReport {
+  generatedAt?: string;
   runMode: LocalJudgeRunMode;
   reason?: string;
   compile: CompileResultSummary;
@@ -55,7 +56,11 @@ export async function writeLocalJudgeReport(
   const reportsDir = path.join(taskRoot, 'reports');
   const runArchiveDir = path.join(reportsDir, 'local_runs');
   const timestamp = new Date().toISOString().replaceAll(':', '-');
-  const payload = JSON.stringify(report, null, 2);
+  const reportWithTimestamp: LocalJudgeReport = {
+    ...report,
+    generatedAt: report.generatedAt ?? new Date().toISOString(),
+  };
+  const payload = JSON.stringify(reportWithTimestamp, null, 2);
 
   await Promise.all([
     mkdir(reportsDir, { recursive: true }),

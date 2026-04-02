@@ -1,4 +1,5 @@
 import type { CollectionIndex } from '../api/educoderClient.js';
+import { getCollectionRoot } from '../workspace/directoryLayout.js';
 import {
   loadCollectionManifest,
   mergeCollectionManifests,
@@ -15,22 +16,37 @@ export interface CollectionIndexClient {
 
 export interface SyncCollectionIndexInput {
   client: CollectionIndexClient;
-  rootDir: string;
+  productRoot: string;
   courseId: string;
   categoryId: string;
 }
 
+export interface SyncCollectionIndexResult {
+  rootDir: string;
+  manifest: CollectionManifest;
+}
+
 export async function syncCollectionIndex({
   client,
-  rootDir,
+  productRoot,
   courseId,
   categoryId,
-}: SyncCollectionIndexInput): Promise<CollectionManifest> {
+}: SyncCollectionIndexInput): Promise<SyncCollectionIndexResult> {
   const incoming = await client.getCollectionIndex({ courseId, categoryId });
+  const rootDir = getCollectionRoot({
+    productRoot,
+    courseId: incoming.courseId,
+    courseName: incoming.courseName,
+    categoryId: incoming.categoryId,
+    categoryName: incoming.categoryName,
+  });
   const existing = await loadCollectionManifest(rootDir);
   const merged = mergeCollectionManifests(existing, incoming);
 
   await writeCollectionManifestArtifacts(rootDir, merged);
 
-  return merged;
+  return {
+    rootDir,
+    manifest: merged,
+  };
 }

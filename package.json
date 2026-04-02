@@ -20,7 +20,9 @@
     "onCommand:educoderLocalOj.runOfficialJudge",
     "onCommand:educoderLocalOj.forceRunOfficialJudge",
     "onCommand:educoderLocalOj.rollbackTemplate",
-    "onCommand:educoderLocalOj.rollbackPassed"
+    "onCommand:educoderLocalOj.rollbackPassed",
+    "onCommand:educoderLocalOj.syncTaskHistory",
+    "onCommand:educoderLocalOj.restoreHistorySnapshot"
   ],
   "main": "./dist/src/extension.js",
   "repository": {
@@ -36,7 +38,9 @@
       { "command": "educoderLocalOj.runOfficialJudge", "title": "Educoder Local OJ: Run Official Judge" },
       { "command": "educoderLocalOj.forceRunOfficialJudge", "title": "Educoder Local OJ: Force Run Official Judge" },
       { "command": "educoderLocalOj.rollbackTemplate", "title": "Educoder Local OJ: Rollback Template" },
-      { "command": "educoderLocalOj.rollbackPassed", "title": "Educoder Local OJ: Rollback Passed" }
+      { "command": "educoderLocalOj.rollbackPassed", "title": "Educoder Local OJ: Rollback Passed" },
+      { "command": "educoderLocalOj.syncTaskHistory", "title": "Educoder Local OJ: Sync Task History" },
+      { "command": "educoderLocalOj.restoreHistorySnapshot", "title": "Educoder Local OJ: Restore History Snapshot" }
     ]
   },
   "scripts": {

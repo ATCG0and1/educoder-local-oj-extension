@@ -43,6 +43,7 @@ export interface CollectionHomeworkIndex {
 
 export interface CollectionIndex {
   courseId: string;
+  courseName?: string;
   categoryId: string;
   categoryName?: string;
   homeworks: CollectionHomeworkIndex[];
@@ -60,6 +61,22 @@ interface HomeworkCommonsListResponse {
       student_work_id?: number | string;
       shixun_name?: string;
     }>;
+  };
+}
+
+interface ShixunChallengeResponseItem {
+  identifier?: string;
+  name?: string;
+  subject?: string;
+  position?: number | string;
+}
+
+interface ShixunExecResponse {
+  game_identifier?: string;
+  identifier?: string;
+  challenge?: {
+    subject?: string;
+    position?: number | string;
   };
 }
 
@@ -107,29 +124,100 @@ export class EducoderClient {
     );
 
     const payload = response.homework_commons_list;
-    const homeworks = (payload?.homeworks ?? []).map<CollectionHomeworkIndex>((homework) => ({
-      homeworkId: String(homework.homework_id),
-      name: homework.name,
-      shixunIdentifier: homework.shixun_identifier ?? '',
-      myshixunIdentifier: homework.myshixun_identifier,
-      studentWorkId: homework.student_work_id == null ? undefined : String(homework.student_work_id),
-      tasks: homework.myshixun_identifier
-        ? [
-            {
-              taskId: homework.myshixun_identifier,
-              name: homework.shixun_name ?? homework.name,
-              position: 1,
-            },
-          ]
-        : [],
-    }));
+    const homeworks = await Promise.all(
+      (payload?.homeworks ?? []).map<Promise<CollectionHomeworkIndex>>(async (homework) => ({
+        homeworkId: String(homework.homework_id),
+        name: homework.name,
+        shixunIdentifier: homework.shixun_identifier ?? '',
+        myshixunIdentifier: homework.myshixun_identifier,
+        studentWorkId: homework.student_work_id == null ? undefined : String(homework.student_work_id),
+        tasks: await this.resolveHomeworkTasks({
+          shixunIdentifier: homework.shixun_identifier ?? '',
+          homeworkName: homework.shixun_name ?? homework.name,
+        }),
+      })),
+    );
 
     return {
       courseId,
+      courseName: undefined,
       categoryId: String(payload?.category_id ?? categoryId),
       categoryName: payload?.category_name,
       homeworks,
     };
+  }
+
+  private async resolveHomeworkTasks(input: {
+    shixunIdentifier: string;
+    homeworkName: string;
+  }): Promise<CollectionTaskIndex[]> {
+    if (!input.shixunIdentifier) {
+      return [];
+    }
+
+    const challengeTasks = await this.loadShixunChallenges(input.shixunIdentifier);
+    if (challengeTasks.length > 0) {
+      return challengeTasks;
+    }
+
+    const fallbackTask = await this.loadShixunExecTask(input.shixunIdentifier, input.homeworkName);
+    return fallbackTask ? [fallbackTask] : [];
+  }
+
+  private async loadShixunChallenges(shixunIdentifier: string): Promise<CollectionTaskIndex[]> {
+    try {
+      const response = await this.get<ShixunChallengeResponseItem[]>(
+        `/api/shixuns/${shixunIdentifier}/challenges.json`,
+        {
+          id: shixunIdentifier,
+        },
+      );
+
+      return (response ?? [])
+        .map((challenge, index) => {
+          const taskId = challenge.identifier?.trim();
+          if (!taskId) {
+            return undefined;
+          }
+
+          return {
+            taskId,
+            name: challenge.subject?.trim() || challenge.name?.trim() || `第${index + 1}关`,
+            position: Number(challenge.position ?? index + 1),
+          };
+        })
+        .filter((task): task is CollectionTaskIndex => Boolean(task))
+        .sort((left, right) => left.position - right.position);
+    } catch {
+      return [];
+    }
+  }
+
+  private async loadShixunExecTask(
+    shixunIdentifier: string,
+    homeworkName: string,
+  ): Promise<CollectionTaskIndex | undefined> {
+    try {
+      const response = await this.get<ShixunExecResponse>(
+        `/api/shixuns/${shixunIdentifier}/shixun_exec.json`,
+        {
+          id: shixunIdentifier,
+        },
+      );
+
+      const taskId = response.game_identifier?.trim() || response.identifier?.trim();
+      if (!taskId) {
+        return undefined;
+      }
+
+      return {
+        taskId,
+        name: response.challenge?.subject?.trim() || homeworkName,
+        position: Number(response.challenge?.position ?? 1),
+      };
+    } catch {
+      return undefined;
+    }
   }
 
   private async request<T>({

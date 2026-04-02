@@ -1,19 +1,14 @@
-import path from 'node:path';
 import type { ClipboardEnv } from '../core/url/clipboardUrlResolver.js';
 import { getProductRoot, type RootResolverDeps } from '../core/config/rootResolver.js';
 import { syncCollectionIndex, type CollectionIndexClient } from '../core/sync/collectionSync.js';
-import { hydrateTask, type HiddenTestCase } from '../core/sync/taskHydrator.js';
-import { writeTaskDebugConfig } from '../core/workspace/vscodeConfigWriter.js';
+import { getTaskLayoutPaths } from '../core/workspace/directoryLayout.js';
 import type { CollectionManifest, HomeworkManifest, TaskManifest } from '../core/sync/manifestStore.js';
-import type { WorkspaceFile } from '../core/workspace/workspaceInit.js';
 import { resolveCollectionUrl, type ManualCollectionUrlInput } from '../core/url/urlInputFlow.js';
 
 export interface SyncCurrentCollectionDeps extends RootResolverDeps {
   clipboardEnv: ClipboardEnv;
   input: ManualCollectionUrlInput;
   client: CollectionIndexClient;
-  templateFiles?: WorkspaceFile[];
-  hiddenTests?: HiddenTestCase[];
 }
 
 export interface SyncCurrentCollectionResult {
@@ -35,14 +30,13 @@ export async function syncCurrentCollection(
     input: deps.input,
   });
   const productRoot = await getProductRoot(deps);
-  const collectionRoot = path.join(productRoot, `classroom_${courseId}`, `shixun_homework_${categoryId}`);
-
-  const manifest = await syncCollectionIndex({
+  const syncResult = await syncCollectionIndex({
     client: deps.client,
-    rootDir: collectionRoot,
+    productRoot,
     courseId,
     categoryId,
   });
+  const { rootDir: collectionRoot, manifest } = syncResult;
 
   const firstHomework = manifest.homeworks[0];
   const firstTask = firstHomework?.tasks[0];
@@ -55,22 +49,13 @@ export async function syncCurrentCollection(
     };
   }
 
-  const layout = await hydrateTask({
+  const layout = getTaskLayoutPaths({
     collectionRoot,
     homeworkId: firstHomework.homeworkId,
     taskId: firstTask.taskId,
-    templateFiles:
-      deps.templateFiles ??
-      [
-        {
-          path: 'test1/test1.cpp',
-          content: 'int main() { return 0; }\n',
-        },
-      ],
-    hiddenTests: deps.hiddenTests ?? [],
+    homeworkDirName: firstHomework.folderName,
+    taskDirName: firstTask.folderName,
   });
-
-  await writeTaskDebugConfig(layout.taskRoot);
 
   return {
     productRoot,

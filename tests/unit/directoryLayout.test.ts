@@ -5,21 +5,28 @@ import { getTaskLayoutPaths } from '../../src/core/workspace/directoryLayout.js'
 describe('getTaskLayoutPaths', () => {
   it('returns the visible task workspace layout under the manifest task directory', () => {
     const layout = getTaskLayoutPaths({
-      collectionRoot: path.join('C:', 'Educoder Local OJ', 'classroom_ufr7sxlc', 'shixun_homework_1316861'),
+      collectionRoot: path.join(
+        'C:',
+        'Educoder Local OJ',
+        '课程 [ufr7sxlc]',
+        '第二章 线性表及应用 [1316861]',
+      ),
       homeworkId: '3727439',
       taskId: 'fc7pz3fm6yjh',
+      homeworkDirName: '2-2 基本实训-链表操作 [3727439]',
+      taskDirName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
     });
 
     expect(layout.taskRoot).toBe(
       path.join(
         'C:',
         'Educoder Local OJ',
-        'classroom_ufr7sxlc',
-        'shixun_homework_1316861',
+        '课程 [ufr7sxlc]',
+        '第二章 线性表及应用 [1316861]',
         'homeworks',
-        '3727439',
+        '2-2 基本实训-链表操作 [3727439]',
         'tasks',
-        'fc7pz3fm6yjh',
+        '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
       ),
     );
     expect(layout.workspaceDir).toBe(path.join(layout.taskRoot, 'workspace'));

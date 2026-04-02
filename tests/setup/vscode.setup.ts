@@ -8,6 +8,36 @@ const showOpenDialog = vi.fn(async () => undefined);
 const showInputBox = vi.fn(async () => undefined);
 const showErrorMessage = vi.fn(async () => undefined);
 const showInformationMessage = vi.fn(async () => undefined);
+const createdPanels: any[] = [];
+const createWebviewPanel = vi.fn(
+  (
+    viewType: string,
+    title: string,
+    column: number,
+    options: Record<string, unknown>,
+  ) => {
+    let disposeListener: (() => void) | undefined;
+    const panel = {
+      viewType,
+      title,
+      column,
+      options,
+      webview: {
+        html: '',
+      },
+      reveal: vi.fn(),
+      onDidDispose: (listener: () => void) => {
+        disposeListener = listener;
+        return { dispose: vi.fn() };
+      },
+      dispose: () => {
+        disposeListener?.();
+      },
+    };
+    createdPanels.push(panel);
+    return panel;
+  },
+);
 
 const mockContext = {
   subscriptions: [],
@@ -41,6 +71,8 @@ function resetMockState(): void {
   showErrorMessage.mockResolvedValue(undefined);
   showInformationMessage.mockReset();
   showInformationMessage.mockResolvedValue(undefined);
+  createWebviewPanel.mockClear();
+  createdPanels.splice(0, createdPanels.length);
 }
 
 vi.mock('vscode', () => ({
@@ -73,6 +105,10 @@ vi.mock('vscode', () => ({
     showInputBox,
     showErrorMessage,
     showInformationMessage,
+    createWebviewPanel,
+  },
+  ViewColumn: {
+    Active: 1,
   },
   __mock: {
     context: mockContext,
@@ -83,6 +119,8 @@ vi.mock('vscode', () => ({
     showInputBox,
     showErrorMessage,
     showInformationMessage,
+    createWebviewPanel,
+    createdPanels,
     reset: resetMockState,
   },
 }));

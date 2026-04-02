@@ -1,9 +1,20 @@
 import path from 'node:path';
+import { formatStableFolderName } from './nameSanitizer.js';
 
 export interface TaskLayoutInput {
   collectionRoot: string;
   homeworkId: string;
   taskId: string;
+  homeworkDirName?: string;
+  taskDirName?: string;
+}
+
+export interface CollectionLayoutInput {
+  productRoot: string;
+  courseId: string;
+  courseName?: string;
+  categoryId: string;
+  categoryName?: string;
 }
 
 export interface TaskLayoutPaths {
@@ -24,8 +35,16 @@ export function getTaskLayoutPaths({
   collectionRoot,
   homeworkId,
   taskId,
+  homeworkDirName,
+  taskDirName,
 }: TaskLayoutInput): TaskLayoutPaths {
-  const taskRoot = path.join(collectionRoot, 'homeworks', homeworkId, 'tasks', taskId);
+  const taskRoot = path.join(
+    collectionRoot,
+    'homeworks',
+    homeworkDirName ?? homeworkId,
+    'tasks',
+    taskDirName ?? taskId,
+  );
   const educoderDir = path.join(taskRoot, '_educoder');
 
   return {
@@ -41,4 +60,18 @@ export function getTaskLayoutPaths({
     reportsDir: path.join(taskRoot, 'reports'),
     vscodeDir: path.join(taskRoot, '.vscode'),
   };
+}
+
+export function getCollectionRoot({
+  productRoot,
+  courseId,
+  courseName,
+  categoryId,
+  categoryName,
+}: CollectionLayoutInput): string {
+  return path.join(
+    productRoot,
+    formatStableFolderName(courseName, courseId, { fallbackName: '课程' }),
+    formatStableFolderName(categoryName, categoryId, { fallbackName: '章节' }),
+  );
 }

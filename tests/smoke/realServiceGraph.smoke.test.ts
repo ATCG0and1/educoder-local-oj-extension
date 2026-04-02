@@ -35,39 +35,51 @@ describe('real command service graph', () => {
 
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            homework_commons_list: {
-              category_id: '1316861',
-              category_name: '第二章 线性表及应用',
-              homeworks: [
-                {
-                  homework_id: '3727439',
-                  name: '2-2 基本实训-链表操作',
-                  shixun_identifier: 'a9k8ufmh',
-                  myshixun_identifier: 'fc7pz3fm6yjh',
-                  student_work_id: '286519999',
-                  shixun_name: '第1关 基本实训：链表操作',
-                },
-              ],
-            },
-          }),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+      vi.fn(async (url: string) => {
+        const payload = url.includes('/api/shixuns/a9k8ufmh/challenges.json')
+          ? [
+              {
+                identifier: 'fc7pz3fm6yjh',
+                subject: '第1关 基本实训：链表操作',
+                position: 1,
+              },
+            ]
+          : {
+              homework_commons_list: {
+                category_id: '1316861',
+                category_name: '第二章 线性表及应用',
+                homeworks: [
+                  {
+                    homework_id: '3727439',
+                    name: '2-2 基本实训-链表操作',
+                    shixun_identifier: 'a9k8ufmh',
+                    myshixun_identifier: 'obcts7i5fx',
+                    student_work_id: '286519999',
+                    shixun_name: '第1关 基本实训：链表操作',
+                  },
+                ],
+              },
+            };
+
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
           },
-        ),
-      ),
+        });
+      }),
     );
 
     const result = await vscode.commands.executeCommand('educoderLocalOj.syncCurrentCollection');
 
     expect(result).toMatchObject({
       productRoot: path.join(rootDir, 'Educoder Local OJ'),
-      collectionRoot: path.join(rootDir, 'Educoder Local OJ', 'classroom_ufr7sxlc', 'shixun_homework_1316861'),
+      collectionRoot: path.join(
+        rootDir,
+        'Educoder Local OJ',
+        '课程 [ufr7sxlc]',
+        '第二章 线性表及应用 [1316861]',
+      ),
       manifest: {
         courseId: 'ufr7sxlc',
         categoryId: '1316861',
@@ -78,8 +90,8 @@ describe('real command service graph', () => {
         path.join(
           rootDir,
           'Educoder Local OJ',
-          'classroom_ufr7sxlc',
-          'shixun_homework_1316861',
+          '课程 [ufr7sxlc]',
+          '第二章 线性表及应用 [1316861]',
           'collection.manifest.json',
         ),
       ),

@@ -15,6 +15,7 @@ export interface OfficialJudgeReport {
   codeHash: string;
   summary: OfficialJudgeSummary;
   cachedAt?: string;
+  generatedAt?: string;
 }
 
 export interface PersistOfficialJudgeInput {
@@ -42,6 +43,7 @@ export async function writeOfficialJudgeArtifacts(
   const report: OfficialJudgeReport = {
     source: 'remote',
     codeHash: input.codeHash,
+    generatedAt: new Date().toISOString(),
     summary: {
       ...input.summary,
       rawLogPath,

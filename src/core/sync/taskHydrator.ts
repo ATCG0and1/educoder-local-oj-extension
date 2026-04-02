@@ -1,8 +1,11 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import type { AnswerFetchClientLike } from '../api/answerFetchClient.js';
 import path from 'node:path';
 import type { HiddenTestFetchClientLike } from '../api/hiddenTestFetchClient.js';
+import type { PassedFetchClientLike } from '../api/passedFetchClient.js';
 import type { SourceFetchClientLike } from '../api/sourceFetchClient.js';
 import type { TaskDetailClientLike, TaskDetailSummary } from '../api/taskDetailClient.js';
+import type { TemplateFetchClientLike } from '../api/templateFetchClient.js';
 import { buildRecoveryMetadata, writeRecoveryMetadata } from '../recovery/materialStore.js';
 import { getTaskLayoutPaths, type TaskLayoutPaths } from '../workspace/directoryLayout.js';
 import { writeTaskDebugConfig } from '../workspace/vscodeConfigWriter.js';
@@ -19,6 +22,7 @@ export interface HydrateTaskInput {
   taskId: string;
   homeworkDirName?: string;
   taskDirName?: string;
+  workspaceFiles?: WorkspaceFile[];
   templateFiles: WorkspaceFile[];
   hiddenTests: HiddenTestCase[];
   answerFiles?: WorkspaceFile[];
@@ -37,6 +41,9 @@ export interface HydrateRemoteTaskInput {
   taskDetailClient: TaskDetailClientLike;
   sourceClient: SourceFetchClientLike;
   hiddenTestClient: HiddenTestFetchClientLike;
+  templateClient?: TemplateFetchClientLike;
+  passedClient?: PassedFetchClientLike;
+  answerClient?: AnswerFetchClientLike;
 }
 
 export interface HydrateRemoteTaskResult {
@@ -48,6 +55,7 @@ export interface HydrateRemoteTaskResult {
 
 export async function hydrateTask(input: HydrateTaskInput): Promise<TaskLayoutPaths> {
   const layout = getTaskLayoutPaths(input);
+  const workspaceFiles = input.workspaceFiles ?? input.templateFiles;
 
   await Promise.all([
     mkdir(layout.workspaceDir, { recursive: true }),
@@ -62,7 +70,7 @@ export async function hydrateTask(input: HydrateTaskInput): Promise<TaskLayoutPa
   ]);
 
   await Promise.all([
-    writeWorkspaceFiles(layout.workspaceDir, input.templateFiles),
+    writeWorkspaceFiles(layout.workspaceDir, workspaceFiles),
     writeWorkspaceFiles(layout.templateDir, input.templateFiles),
     writeWorkspaceFiles(layout.answerDir, input.answerFiles ?? []),
     writeWorkspaceFiles(layout.passedDir, input.passedFiles ?? []),
@@ -91,7 +99,7 @@ export async function hydrateTaskFromRemote(
     taskId: input.taskId,
     homeworkId: input.homeworkId,
   });
-  const templateFiles = await input.sourceClient.fetchSourceFiles({
+  const workspaceFiles = await input.sourceClient.fetchSourceFiles({
     taskId: input.taskId,
     homeworkId: input.homeworkId,
     filePaths: detail.editablePaths,
@@ -100,6 +108,26 @@ export async function hydrateTaskFromRemote(
     taskId: input.taskId,
     fallbackTestSets: detail.testSets,
   });
+  const [templateFiles, passedFiles, answerInfo] = await Promise.all([
+    input.templateClient
+      ? input.templateClient.fetchTemplateFiles({
+          taskId: input.taskId,
+          homeworkId: input.homeworkId,
+          filePaths: detail.editablePaths,
+        })
+      : workspaceFiles,
+    input.passedClient
+      ? input.passedClient.fetchPassedFiles({
+          taskId: input.taskId,
+          homeworkId: input.homeworkId,
+          filePaths: detail.editablePaths,
+        })
+      : [],
+    input.answerClient?.fetchAnswerInfo({
+      taskId: input.taskId,
+    }),
+  ]);
+  const answerFiles = materializeAnswerFiles(answerInfo);
 
   const layout = await hydrateTask({
     collectionRoot: input.collectionRoot,
@@ -107,12 +135,16 @@ export async function hydrateTaskFromRemote(
     taskId: input.taskId,
     homeworkDirName: input.homeworkDirName,
     taskDirName: input.taskDirName,
+    workspaceFiles,
     templateFiles,
     hiddenTests,
+    answerFiles,
+    answerInfo,
+    passedFiles,
     meta: {
       ...detail,
       hiddenTestsCount: hiddenTests.length,
-      sourceFileCount: templateFiles.length,
+      sourceFileCount: workspaceFiles.length,
       hydratedAt: new Date().toISOString(),
     },
   });
@@ -146,4 +178,22 @@ async function writeOptionalJson(filePath: string, data: unknown): Promise<void>
   }
 
   await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function materializeAnswerFiles(answerInfo: unknown): WorkspaceFile[] {
+  if (!answerInfo || typeof answerInfo !== 'object') {
+    return [];
+  }
+
+  const entries = (answerInfo as { entries?: Array<{ answerId?: number; name?: string; content?: string }> }).entries;
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  return entries
+    .filter((entry) => typeof entry.content === 'string' && entry.content.length > 0)
+    .map((entry, index) => ({
+      path: `answer-${entry.answerId ?? index + 1}.md`,
+      content: entry.content ?? '',
+    }));
 }

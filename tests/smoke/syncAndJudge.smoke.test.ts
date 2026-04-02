@@ -82,7 +82,26 @@ describe('sync and open task smoke flow', () => {
         },
       }),
     );
-    configureCommandService('educoderLocalOj.openTask', (taskRoot) => openTaskCommand(String(taskRoot)));
+    configureCommandService('educoderLocalOj.openTask', (taskRoot) =>
+      openTaskCommand(String(taskRoot), {
+        taskDetailClient: {
+          getTaskDetail: async () => ({
+            taskId: 'fc7pz3fm6yjh',
+            homeworkId: '3727439',
+            taskName: '第1关 基本实训：链表操作',
+            editablePaths: ['test1/test1.cpp'],
+            testSets: [{ is_public: false, input: '1 2\n', output: '3\n' }],
+            raw: {},
+          }),
+        },
+        sourceClient: {
+          fetchSourceFiles: async () => [{ path: 'test1/test1.cpp', content: 'int main() { return 0; }\n' }],
+        },
+        hiddenTestClient: {
+          fetchHiddenTests: async () => [{ input: '1 2\n', output: '3\n' }],
+        },
+      }),
+    );
 
     const syncResult = (await vscode.commands.executeCommand(
       'educoderLocalOj.syncCurrentCollection',
@@ -99,6 +118,7 @@ describe('sync and open task smoke flow', () => {
     expect(taskState).toMatchObject({
       taskId: 'fc7pz3fm6yjh',
       state: '可本地评测',
+      hiddenTestsCached: true,
     });
   });
 });

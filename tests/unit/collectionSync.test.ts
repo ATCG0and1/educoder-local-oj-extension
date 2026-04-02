@@ -50,27 +50,37 @@ describe('syncCollectionIndex', () => {
       }),
     };
 
-    const manifest = await syncCollectionIndex({
+    const result = await syncCollectionIndex({
       client,
-      rootDir,
+      productRoot: rootDir,
       courseId: 'ufr7sxlc',
       categoryId: '1316861',
     });
+    const { manifest } = result;
 
     expect(manifest.homeworks).toHaveLength(1);
     expect(
-      await readJson(path.join(rootDir, 'collection.manifest.json')),
+      await readJson(path.join(result.rootDir, 'collection.manifest.json')),
     ).toMatchObject({
       courseId: 'ufr7sxlc',
       categoryId: '1316861',
+      categoryFolderName: '第二章 线性表及应用 [1316861]',
     });
     expect(
       await readJson(
-        path.join(rootDir, 'homeworks', '3727439', 'tasks', 'fc7pz3fm6yjh', 'task.manifest.json'),
+        path.join(
+          result.rootDir,
+          'homeworks',
+          '2-2 基本实训-链表操作 [3727439]',
+          'tasks',
+          '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+          'task.manifest.json',
+        ),
       ),
     ).toMatchObject({
       taskId: 'fc7pz3fm6yjh',
       name: '第1关 基本实训：链表操作',
+      folderName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
     });
   });
 
@@ -101,10 +111,10 @@ describe('syncCollectionIndex', () => {
       getCollectionIndex: async () => fixture,
     };
 
-    await syncCollectionIndex({ client, rootDir, courseId: 'ufr7sxlc', categoryId: '1316861' });
-    const manifest = await syncCollectionIndex({
+    await syncCollectionIndex({ client, productRoot: rootDir, courseId: 'ufr7sxlc', categoryId: '1316861' });
+    const { manifest } = await syncCollectionIndex({
       client,
-      rootDir,
+      productRoot: rootDir,
       courseId: 'ufr7sxlc',
       categoryId: '1316861',
     });
@@ -185,10 +195,10 @@ describe('syncCollectionIndex', () => {
       getCollectionIndex: async () => snapshots[callIndex++]!,
     };
 
-    await syncCollectionIndex({ client, rootDir, courseId: 'ufr7sxlc', categoryId: '1316861' });
-    const manifest = await syncCollectionIndex({
+    await syncCollectionIndex({ client, productRoot: rootDir, courseId: 'ufr7sxlc', categoryId: '1316861' });
+    const { manifest } = await syncCollectionIndex({
       client,
-      rootDir,
+      productRoot: rootDir,
       courseId: 'ufr7sxlc',
       categoryId: '1316861',
     });

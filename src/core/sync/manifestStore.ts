@@ -1,12 +1,16 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CollectionHomeworkIndex, CollectionIndex, CollectionTaskIndex } from '../api/educoderClient.js';
+import { formatStableFolderName } from '../workspace/nameSanitizer.js';
 
-export interface TaskManifest extends CollectionTaskIndex {}
+export interface TaskManifest extends CollectionTaskIndex {
+  folderName: string;
+}
 
 export interface HomeworkManifest {
   homeworkId: string;
   name: string;
+  folderName: string;
   shixunIdentifier: string;
   myshixunIdentifier?: string;
   studentWorkId?: string;
@@ -15,8 +19,11 @@ export interface HomeworkManifest {
 
 export interface CollectionManifest {
   courseId: string;
+  courseName?: string;
+  courseFolderName: string;
   categoryId: string;
   categoryName?: string;
+  categoryFolderName: string;
   homeworks: HomeworkManifest[];
 }
 
@@ -51,6 +58,9 @@ export function mergeCollectionManifests(
     const mergedHomework = byHomeworkId.get(homework.homeworkId) ?? {
       homeworkId: homework.homeworkId,
       name: homework.name,
+      folderName: formatStableFolderName(homework.name, homework.homeworkId, {
+        fallbackName: '作业',
+      }),
       shixunIdentifier: homework.shixunIdentifier,
       myshixunIdentifier: homework.myshixunIdentifier,
       studentWorkId: homework.studentWorkId,
@@ -58,6 +68,9 @@ export function mergeCollectionManifests(
     };
 
     mergedHomework.name = homework.name;
+    mergedHomework.folderName = formatStableFolderName(homework.name, homework.homeworkId, {
+      fallbackName: '作业',
+    });
     mergedHomework.shixunIdentifier = homework.shixunIdentifier;
     mergedHomework.myshixunIdentifier = homework.myshixunIdentifier;
     mergedHomework.studentWorkId = homework.studentWorkId;
@@ -68,8 +81,15 @@ export function mergeCollectionManifests(
 
   return {
     courseId: incoming.courseId,
+    courseName: incoming.courseName,
+    courseFolderName: formatStableFolderName(incoming.courseName, incoming.courseId, {
+      fallbackName: '课程',
+    }),
     categoryId: incoming.categoryId,
     categoryName: incoming.categoryName,
+    categoryFolderName: formatStableFolderName(incoming.categoryName, incoming.categoryId, {
+      fallbackName: '章节',
+    }),
     homeworks: [...byHomeworkId.values()],
   };
 }
@@ -82,12 +102,12 @@ export async function writeCollectionManifestArtifacts(
   await writeJson(path.join(rootDir, 'collection.manifest.json'), manifest);
 
   for (const homework of manifest.homeworks) {
-    const homeworkDir = path.join(rootDir, 'homeworks', homework.homeworkId);
+    const homeworkDir = path.join(rootDir, 'homeworks', homework.folderName);
     await mkdir(path.join(homeworkDir, 'tasks'), { recursive: true });
     await writeJson(path.join(homeworkDir, 'homework.manifest.json'), homework);
 
     for (const task of homework.tasks) {
-      const taskDir = path.join(homeworkDir, 'tasks', task.taskId);
+      const taskDir = path.join(homeworkDir, 'tasks', task.folderName);
       await mkdir(taskDir, { recursive: true });
       await writeJson(path.join(taskDir, 'task.manifest.json'), task);
     }
@@ -102,6 +122,10 @@ function mergeTasks(existing: TaskManifest[], incoming: CollectionTaskIndex[]): 
       taskId: task.taskId,
       name: task.name,
       position: task.position,
+      folderName: formatStableFolderName(task.name, task.taskId, {
+        index: task.position,
+        fallbackName: '任务',
+      }),
     });
   }
 

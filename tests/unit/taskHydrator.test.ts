@@ -170,16 +170,43 @@ describe('hydrateTask', () => {
         }),
       },
       sourceClient: {
-        fetchSourceFiles: async () => [{ path: 'test1/tasks.h', content: '#pragma once\n' }],
+        fetchSourceFiles: async () => [{ path: 'test1/tasks.h', content: 'current workspace\n' }],
       },
       hiddenTestClient: {
         fetchHiddenTests: async () => [{ input: '1 2\n', output: '3\n' }],
+      },
+      templateClient: {
+        fetchTemplateFiles: async () => [{ path: 'test1/tasks.h', content: '#pragma once\n' }],
+      },
+      passedClient: {
+        fetchPassedFiles: async () => [{ path: 'test1/tasks.h', content: 'passed solution\n' }],
+      },
+      answerClient: {
+        fetchAnswerInfo: async () => ({
+          status: 3,
+          entries: [
+            {
+              answerId: 3567559,
+              name: '解题思路1',
+              content: '```cpp\nint main() {}\n```',
+            },
+          ],
+        }),
       },
     });
 
     await expect(
       readFile(path.join(result.layout.workspaceDir, 'test1', 'tasks.h'), 'utf8'),
+    ).resolves.toBe('current workspace\n');
+    await expect(
+      readFile(path.join(result.layout.templateDir, 'test1', 'tasks.h'), 'utf8'),
     ).resolves.toBe('#pragma once\n');
+    await expect(
+      readFile(path.join(result.layout.passedDir, 'test1', 'tasks.h'), 'utf8'),
+    ).resolves.toBe('passed solution\n');
+    await expect(
+      readFile(path.join(result.layout.answerDir, 'answer_info.json'), 'utf8'),
+    ).resolves.toContain('"answerId": 3567559');
     await expect(
       readFile(path.join(result.layout.metaDir, 'task.json'), 'utf8'),
     ).resolves.toContain('"hiddenTestsCount": 1');
@@ -189,5 +216,8 @@ describe('hydrateTask', () => {
     await expect(
       readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8'),
     ).resolves.toContain('"templateReady": true');
+    await expect(
+      readFile(path.join(result.layout.metaDir, 'recovery.json'), 'utf8'),
+    ).resolves.toContain('"passedReady": true');
   });
 });

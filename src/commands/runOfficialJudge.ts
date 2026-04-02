@@ -3,20 +3,17 @@ import {
   type ExecuteRemoteJudgeInput,
   type RemoteOfficialJudgeResult,
 } from '../core/remote/officialJudge.js';
+import { getDefaultOfficialJudgeExecutor } from '../core/remote/officialJudgeExecutor.js';
 import type { OfficialJudgeReport } from '../core/remote/officialLogStore.js';
 
 export async function runOfficialJudgeCommand(
   taskRoot: string,
   executeRemoteJudge: (
     input: ExecuteRemoteJudgeInput,
-  ) => Promise<RemoteOfficialJudgeResult> = defaultRemoteJudgeExecutor,
+  ) => Promise<RemoteOfficialJudgeResult> = getDefaultOfficialJudgeExecutor(),
 ): Promise<OfficialJudgeReport> {
   return runOfficialJudgeBridge({
     taskRoot,
     executeRemoteJudge,
   });
-}
-
-async function defaultRemoteJudgeExecutor(): Promise<RemoteOfficialJudgeResult> {
-  throw new Error('Official judge executor is not configured.');
 }

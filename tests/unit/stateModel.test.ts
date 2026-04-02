@@ -21,44 +21,94 @@ describe('stateModel', () => {
     expect(buildTaskStateModel({}).state).toBe('未同步');
     expect(
       buildTaskStateModel({
-        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1 },
-      }).state,
-    ).toBe('已同步');
+        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
+        recoveryMetadata: {
+          templateReady: true,
+          templateFileCount: 1,
+          passedReady: true,
+          passedFileCount: 1,
+          answerReady: true,
+          answerEntryCount: 2,
+          historyReady: true,
+          historyFileCount: 1,
+          updatedAt: '2026-04-02T00:00:00.000Z',
+        },
+        historyEntryCount: 1,
+      }),
+    ).toMatchObject({
+      state: '已同步',
+      readiness: 'missing_workspace',
+      hiddenTestsCached: false,
+      templateReady: true,
+      passedReady: true,
+      answerEntryCount: 2,
+      historyEntryCount: 1,
+      lastRecoverySyncAt: '2026-04-02T00:00:00.000Z',
+    });
     expect(
       buildTaskStateModel({
-        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1 },
+        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
-      }).state,
-    ).toBe('可本地评测');
+        recoveryMetadata: {
+          templateReady: true,
+          templateFileCount: 1,
+          passedReady: false,
+          passedFileCount: 0,
+          answerReady: false,
+          answerEntryCount: 0,
+          historyReady: false,
+          historyFileCount: 0,
+          updatedAt: '2026-04-02T00:00:00.000Z',
+        },
+      }),
+    ).toMatchObject({
+      state: '可本地评测',
+      readiness: 'workspace_only',
+      templateReady: true,
+      passedReady: false,
+    });
     expect(
       buildTaskStateModel({
-        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1 },
+        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
+        hiddenTestsCached: true,
         localReport: {
           runMode: 'full',
+          generatedAt: '2026-04-01T00:00:00.000Z',
           compile: { verdict: 'compiled', stdout: '', stderr: '', executablePath: 'app.exe' },
           caseResults: [],
           summary: { total: 1, passed: 0, failed: 1 },
         },
-      }).state,
-    ).toBe('本地评测未过');
+      }),
+    ).toMatchObject({
+      state: '本地评测未过',
+      readiness: 'local_ready',
+      hiddenTestsCached: true,
+      localCaseCount: 1,
+      lastLocalJudgeAt: '2026-04-01T00:00:00.000Z',
+    });
     expect(
       buildTaskStateModel({
-        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1 },
+        taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
+        hiddenTestsCached: true,
         localReport: {
           runMode: 'full',
           compile: { verdict: 'compiled', stdout: '', stderr: '', executablePath: 'app.exe' },
           caseResults: [],
           summary: { total: 1, passed: 1, failed: 0 },
         },
-      }).state,
-    ).toBe('本地评测已过');
+      }),
+    ).toMatchObject({
+      state: '本地评测已过',
+      readiness: 'local_ready',
+      hiddenTestsCached: true,
+    });
   });
 
   it('prefers the official pass state as the final state', () => {
     const model = buildTaskStateModel({
-      taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1 },
+      taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
       workspaceReady: true,
       localReport: {
         runMode: 'full',
@@ -69,6 +119,7 @@ describe('stateModel', () => {
       officialReport: {
         source: 'remote',
         codeHash: 'abc',
+        generatedAt: '2026-04-01T01:00:00.000Z',
         summary: {
           verdict: 'passed',
           score: 100,
@@ -78,6 +129,9 @@ describe('stateModel', () => {
       },
     });
 
-    expect(model.state).toBe('官方评测已过（通关）');
+    expect(model).toMatchObject({
+      state: '官方评测已过（通关）',
+      lastOfficialJudgeAt: '2026-04-01T01:00:00.000Z',
+    });
   });
 });

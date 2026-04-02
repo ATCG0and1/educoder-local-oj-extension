@@ -12,5 +12,7 @@ describe('command registration', () => {
     expect(commands).toContain('educoderLocalOj.forceRunOfficialJudge');
     expect(commands).toContain('educoderLocalOj.rollbackTemplate');
     expect(commands).toContain('educoderLocalOj.rollbackPassed');
+    expect(commands).toContain('educoderLocalOj.syncTaskHistory');
+    expect(commands).toContain('educoderLocalOj.restoreHistorySnapshot');
   });
 });
