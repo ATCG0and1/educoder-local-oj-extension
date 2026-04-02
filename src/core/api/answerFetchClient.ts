@@ -4,6 +4,11 @@ export interface FetchAnswerInfoInput {
   taskId: string;
 }
 
+export interface UnlockAnswerInput {
+  taskId: string;
+  answerId: number;
+}
+
 interface AnswerInfoResponseItem {
   answer_id?: number;
   answer_name?: string;
@@ -18,6 +23,10 @@ interface AnswerInfoResponse {
   message?: AnswerInfoResponseItem[];
 }
 
+interface UnlockAnswerResponse {
+  contents?: string;
+}
+
 export interface AnswerEntry {
   answerId?: number;
   name: string;
@@ -27,6 +36,12 @@ export interface AnswerEntry {
   content?: string;
 }
 
+export interface UnlockedAnswerContent {
+  answerId: number;
+  content: string;
+  unlocked: boolean;
+}
+
 export interface AnswerInfoSummary {
   status?: number;
   entries: AnswerEntry[];
@@ -34,6 +49,7 @@ export interface AnswerInfoSummary {
 
 export interface AnswerFetchClientLike {
   fetchAnswerInfo(input: FetchAnswerInfoInput): Promise<AnswerInfoSummary>;
+  unlockAnswer(input: UnlockAnswerInput): Promise<UnlockedAnswerContent>;
 }
 
 export class AnswerFetchClient implements AnswerFetchClientLike {
@@ -45,6 +61,17 @@ export class AnswerFetchClient implements AnswerFetchClientLike {
     );
 
     return normalizeAnswerInfo(response);
+  }
+
+  async unlockAnswer(input: UnlockAnswerInput): Promise<UnlockedAnswerContent> {
+    const response = await this.client.get<UnlockAnswerResponse>(
+      `/api/tasks/${input.taskId}/unlock_answer.json`,
+      {
+        answer_id: input.answerId,
+      },
+    );
+
+    return normalizeUnlockedAnswer(response, input.answerId);
   }
 }
 
@@ -59,5 +86,17 @@ export function normalizeAnswerInfo(response: AnswerInfoResponse): AnswerInfoSum
       viewTime: item.view_time ?? undefined,
       content: item.answer_contents,
     })),
+  };
+}
+
+export function normalizeUnlockedAnswer(
+  response: UnlockAnswerResponse,
+  answerId: number,
+): UnlockedAnswerContent {
+  const content = response.contents ?? '';
+  return {
+    answerId,
+    content,
+    unlocked: content.length > 0,
   };
 }

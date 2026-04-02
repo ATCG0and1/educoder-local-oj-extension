@@ -43,4 +43,31 @@ describe('AnswerFetchClient', () => {
 
     expect(calls).toEqual([['/api/tasks/fc7pz3fm6yjh/get_answer_info.json', undefined]]);
   });
+
+  it('unlocks answer bodies by answer id', async () => {
+    const calls: Array<[string, Record<string, string | number | undefined> | undefined]> = [];
+    const client = new AnswerFetchClient({
+      get: async <T>(requestPath: string, query?: Record<string, string | number | undefined>) => {
+        calls.push([requestPath, query]);
+        return {
+          contents: '```cpp\nint main() { return 0; }\n```',
+        } as T;
+      },
+    });
+
+    await expect(
+      client.unlockAnswer({
+        taskId: 'fc7pz3fm6yjh',
+        answerId: 3567559,
+      }),
+    ).resolves.toEqual({
+      answerId: 3567559,
+      content: '```cpp\nint main() { return 0; }\n```',
+      unlocked: true,
+    });
+
+    expect(calls).toEqual([
+      ['/api/tasks/fc7pz3fm6yjh/unlock_answer.json', { answer_id: 3567559 }],
+    ]);
+  });
 });
