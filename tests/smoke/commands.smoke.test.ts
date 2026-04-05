@@ -3,6 +3,7 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { syncCollectionPackages } from '../../src/commands/syncCollectionPackages.js';
 import { openTaskCommand } from '../../src/commands/openTask.js';
 import { submitTaskCommand } from '../../src/commands/submitTask.js';
 import { ROOT_FOLDER_URI_KEY } from '../../src/core/config/extensionState.js';
@@ -136,6 +137,85 @@ describe('command registration', () => {
       productRoot: path.join(rootDir, 'Educoder Local OJ'),
     });
     expect(vscodeMock.globalStateStore.get(ROOT_FOLDER_URI_KEY)).toBeDefined();
+  });
+
+  it('executes the one-click chapter sync command id and returns full package results', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const rootDir = await createTempTaskRoot();
+    const chapterUrl = 'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0';
+
+    vscodeMock.clipboardReadText.mockResolvedValue(chapterUrl);
+    vscodeMock.showInputBox.mockImplementation(async (options?: { value?: string }) => options?.value ?? chapterUrl);
+    vscodeMock.showOpenDialog.mockResolvedValue([{ fsPath: rootDir }]);
+
+    configureCommandService('educoderLocalOj.syncCollectionPackages', () =>
+      syncCollectionPackages({
+        context: vscodeMock.context,
+        window: vscode.window,
+        clipboardEnv: vscode.env,
+        input: vscode.window,
+        client: {
+          getCollectionIndex: async () => ({
+            courseId: 'ufr7sxlc',
+            courseName: '课程',
+            categoryId: '1316861',
+            categoryName: '第二章 线性表及应用',
+            homeworks: [
+              {
+                homeworkId: '3727439',
+                name: '2-2 基本实训-链表操作',
+                shixunIdentifier: 'a9k8ufmh',
+                myshixunIdentifier: 'obcts7i5fx',
+                studentWorkId: '286519999',
+                tasks: [
+                  {
+                    taskId: 'fc7pz3fm6yjh',
+                    name: '第1关 基本实训：链表操作',
+                    position: 1,
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+        syncTaskPackage: async (taskRoot) => {
+          const markerPath = path.join(taskRoot, 'problem', 'statement.md');
+          await import('node:fs/promises').then(({ mkdir }) =>
+            mkdir(path.dirname(markerPath), { recursive: true }),
+          );
+          await writeFile(markerPath, '# 题面\n', 'utf8');
+          return { taskRoot };
+        },
+      }),
+    );
+
+    const result = await vscode.commands.executeCommand('educoderLocalOj.syncCollectionPackages');
+
+    expect(result).toMatchObject({
+      syncedTasks: [
+        expect.objectContaining({
+          taskRoot: expect.stringContaining('fc7pz3fm6yjh'),
+        }),
+      ],
+    });
+    expect(vscodeMock.showOpenDialog).toHaveBeenCalledTimes(1);
+    await expect(
+      readFile(
+        path.join(
+          rootDir,
+          'Educoder Local OJ',
+          '课程 [ufr7sxlc]',
+          '第二章 线性表及应用 [1316861]',
+          'homeworks',
+          '2-2 基本实训-链表操作 [3727439]',
+          'tasks',
+          '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+          'problem',
+          'statement.md',
+        ),
+        'utf8',
+      ),
+    ).resolves.toContain('# 题面');
   });
 
   it('opens the real statement file and current code file through registered commands', async () => {
