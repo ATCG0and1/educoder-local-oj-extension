@@ -13,9 +13,17 @@
     "vscode": "^1.90.0"
   },
   "activationEvents": [
-    "onCommand:educoderLocalOj.syncCurrentCollection",
+    "onView:educoderLocalOj.taskTree",
+    "onView:educoderLocalOj.sidebar",
+    "onCommand:educoderLocalOj.showLogs",
+    "onCommand:educoderLocalOj.enableEdgeReuse",
+    "onCommand:educoderLocalOj.selectRootFolder",
+    "onCommand:educoderLocalOj.syncCollectionPackages",
     "onCommand:educoderLocalOj.openTask",
+    "onCommand:educoderLocalOj.openTaskStatement",
+    "onCommand:educoderLocalOj.openCurrentCode",
     "onCommand:educoderLocalOj.runLocalJudge",
+    "onCommand:educoderLocalOj.submitTask",
     "onCommand:educoderLocalOj.rerunFailedCases",
     "onCommand:educoderLocalOj.runOfficialJudge",
     "onCommand:educoderLocalOj.forceRunOfficialJudge",
@@ -26,7 +34,13 @@
     "onCommand:educoderLocalOj.syncTaskRepository",
     "onCommand:educoderLocalOj.syncTaskAnswers",
     "onCommand:educoderLocalOj.compareWithTemplate",
-    "onCommand:educoderLocalOj.compareWithAnswer"
+    "onCommand:educoderLocalOj.compareWithAnswer",
+    "onCommand:educoderLocalOj.syncTaskRepositoryFromTree",
+    "onCommand:educoderLocalOj.syncTaskAnswersFromTree",
+    "onCommand:educoderLocalOj.compareWithTemplateFromTree",
+    "onCommand:educoderLocalOj.compareWithAnswerFromTree",
+    "onCommand:educoderLocalOj.filterTaskTree",
+    "onCommand:educoderLocalOj.clearTaskTreeFilter"
   ],
   "main": "./dist/src/extension.js",
   "repository": {
@@ -34,22 +48,92 @@
     "url": "https://example.com/young/educoder-local-oj-extension.git"
   },
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "educoderLocalOj",
+          "title": "头哥题目包",
+          "icon": "media/educoder-oj.svg"
+        }
+      ]
+    },
+    "views": {
+      "educoderLocalOj": [
+        {
+          "id": "educoderLocalOj.taskTree",
+          "name": "题目目录"
+        },
+        {
+          "type": "webview",
+          "id": "educoderLocalOj.sidebar",
+          "name": "题目工作台"
+        }
+      ]
+    },
     "commands": [
-      { "command": "educoderLocalOj.syncCurrentCollection", "title": "Educoder Local OJ: Sync Current Collection" },
-      { "command": "educoderLocalOj.openTask", "title": "Educoder Local OJ: Open Task" },
-      { "command": "educoderLocalOj.runLocalJudge", "title": "Educoder Local OJ: Run Local Judge" },
-      { "command": "educoderLocalOj.rerunFailedCases", "title": "Educoder Local OJ: Rerun Failed Cases" },
-      { "command": "educoderLocalOj.runOfficialJudge", "title": "Educoder Local OJ: Run Official Judge" },
-      { "command": "educoderLocalOj.forceRunOfficialJudge", "title": "Educoder Local OJ: Force Run Official Judge" },
-      { "command": "educoderLocalOj.rollbackTemplate", "title": "Educoder Local OJ: Rollback Template" },
-      { "command": "educoderLocalOj.rollbackPassed", "title": "Educoder Local OJ: Rollback Passed" },
-      { "command": "educoderLocalOj.syncTaskHistory", "title": "Educoder Local OJ: Sync Task History" },
-      { "command": "educoderLocalOj.restoreHistorySnapshot", "title": "Educoder Local OJ: Restore History Snapshot" },
-      { "command": "educoderLocalOj.syncTaskRepository", "title": "Educoder Local OJ: Sync Full Repository" },
-      { "command": "educoderLocalOj.syncTaskAnswers", "title": "Educoder Local OJ: Sync Answers" },
-      { "command": "educoderLocalOj.compareWithTemplate", "title": "Educoder Local OJ: Compare With Template" },
-      { "command": "educoderLocalOj.compareWithAnswer", "title": "Educoder Local OJ: Compare With Answer" }
-    ]
+      { "command": "educoderLocalOj.showLogs", "title": "Educoder Local OJ: 查看日志" },
+      { "command": "educoderLocalOj.enableEdgeReuse", "title": "Educoder Local OJ: 启用 Edge 复用（调试）" },
+      { "command": "educoderLocalOj.selectRootFolder", "title": "Educoder Local OJ: 更换存放目录" },
+      { "command": "educoderLocalOj.syncCollectionPackages", "title": "Educoder Local OJ: 一键同步本章" },
+      { "command": "educoderLocalOj.openTask", "title": "Educoder Local OJ: 打开当前题目" },
+      { "command": "educoderLocalOj.openTaskStatement", "title": "Educoder Local OJ: 打开题面文件" },
+      { "command": "educoderLocalOj.openCurrentCode", "title": "Educoder Local OJ: 打开当前代码文件" },
+      { "command": "educoderLocalOj.runLocalJudge", "title": "Educoder Local OJ: 运行本地测试" },
+      { "command": "educoderLocalOj.submitTask", "title": "Educoder Local OJ: 提交评测（本地 + 头哥）" },
+      { "command": "educoderLocalOj.rerunFailedCases", "title": "Educoder Local OJ: 重跑失败用例" },
+      { "command": "educoderLocalOj.runOfficialJudge", "title": "Educoder Local OJ: 仅提交到头哥评测（高级）" },
+      { "command": "educoderLocalOj.forceRunOfficialJudge", "title": "Educoder Local OJ: 强制提交到头哥" },
+      { "command": "educoderLocalOj.rollbackTemplate", "title": "Educoder Local OJ: 回滚到模板" },
+      { "command": "educoderLocalOj.rollbackPassed", "title": "Educoder Local OJ: 回滚到已通过代码" },
+      { "command": "educoderLocalOj.syncTaskHistory", "title": "Educoder Local OJ: 同步评测历史" },
+      { "command": "educoderLocalOj.restoreHistorySnapshot", "title": "Educoder Local OJ: 恢复历史快照" },
+      { "command": "educoderLocalOj.syncTaskRepository", "title": "Educoder Local OJ: 拉全题目资料" },
+      { "command": "educoderLocalOj.syncTaskAnswers", "title": "Educoder Local OJ: 同步答案" },
+      { "command": "educoderLocalOj.compareWithTemplate", "title": "Educoder Local OJ: 对比模板" },
+      { "command": "educoderLocalOj.compareWithAnswer", "title": "Educoder Local OJ: 对比答案" },
+      { "command": "educoderLocalOj.syncTaskRepositoryFromTree", "title": "Educoder Local OJ: 拉全题目资料（目录）" },
+      { "command": "educoderLocalOj.syncTaskAnswersFromTree", "title": "Educoder Local OJ: 同步答案（目录）" },
+      { "command": "educoderLocalOj.compareWithTemplateFromTree", "title": "Educoder Local OJ: 对比模板（目录）" },
+      { "command": "educoderLocalOj.compareWithAnswerFromTree", "title": "Educoder Local OJ: 对比答案（目录）" },
+      { "command": "educoderLocalOj.filterTaskTree", "title": "Educoder Local OJ: 筛选题目目录" },
+      { "command": "educoderLocalOj.clearTaskTreeFilter", "title": "Educoder Local OJ: 清除题目筛选" }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "educoderLocalOj.filterTaskTree",
+          "when": "view == educoderLocalOj.taskTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "educoderLocalOj.clearTaskTreeFilter",
+          "when": "view == educoderLocalOj.taskTree",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "educoderLocalOj.syncTaskAnswersFromTree",
+          "when": "view == educoderLocalOj.taskTree && viewItem == task",
+          "group": "inline@1"
+        },
+        {
+          "command": "educoderLocalOj.syncTaskRepositoryFromTree",
+          "when": "view == educoderLocalOj.taskTree && viewItem == task",
+          "group": "inline@2"
+        },
+        {
+          "command": "educoderLocalOj.compareWithTemplateFromTree",
+          "when": "view == educoderLocalOj.taskTree && viewItem == task",
+          "group": "navigation@3"
+        },
+        {
+          "command": "educoderLocalOj.compareWithAnswerFromTree",
+          "when": "view == educoderLocalOj.taskTree && viewItem == task",
+          "group": "navigation@4"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "tsc -p . && node -e \"const fs=require('fs');const p=require('./package.json').main.replace(/^\\.\\//,'');if(!fs.existsSync(p)){console.error('Missing main output: '+p);process.exit(1)}\"",
