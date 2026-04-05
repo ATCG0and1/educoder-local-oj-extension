@@ -1,9 +1,12 @@
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AnswerFetchClientLike } from '../core/api/answerFetchClient.js';
-import { hydrateTaskFromRemote } from '../core/sync/taskHydrator.js';
+import { syncTaskPackageFromRemote } from '../core/sync/taskPackageSync.js';
 import type { CollectionManifest, HomeworkManifest, TaskManifest } from '../core/sync/manifestStore.js';
 import { loadTaskStateModel, type TaskStateModel } from '../core/ui/stateModel.js';
+import { applyLegacyTaskCompat } from '../core/workspace/legacyTaskCompat.js';
+import { resolveTaskPackagePaths } from '../core/workspace/taskPackageMigration.js';
+import { revealInExplorer as defaultRevealInExplorer } from '../core/workspace/workspaceBinding.js';
 import { openOrRevealDashboardPanel } from '../webview/dashboard/panel.js';
 import type { HiddenTestFetchClientLike } from '../core/api/hiddenTestFetchClient.js';
 import type { PassedFetchClientLike } from '../core/api/passedFetchClient.js';
@@ -19,17 +22,28 @@ export interface OpenTaskCommandDeps {
   passedClient?: PassedFetchClientLike;
   answerClient?: AnswerFetchClientLike;
   openPanel?: typeof openOrRevealDashboardPanel;
+  revealInExplorer?: (targetPath: string) => Promise<unknown>;
 }
 
 export async function openTaskCommand(
   taskRoot: string,
   deps: OpenTaskCommandDeps = {},
 ): Promise<TaskStateModel> {
-  const [workspaceReady, hiddenReady] = await Promise.all([
-    hasPath(path.join(taskRoot, 'workspace')),
-    hasPath(path.join(taskRoot, '_educoder', 'tests', 'hidden')),
+  await applyLegacyTaskCompat(taskRoot);
+  const resolvedPaths = await resolveTaskPackagePaths(taskRoot);
+  const [
+    workspaceReady,
+    hiddenReady,
+    taskMetaReady,
+  ] = await Promise.all([
+    resolvedPaths.currentCodeSource !== 'missing',
+    resolvedPaths.hiddenTestsSource !== 'missing',
+    hasPath(path.join(taskRoot, '_educoder', 'meta', 'task.json')),
   ]);
-  const needsHydration = !workspaceReady || !hiddenReady;
+  const needsHydration =
+    !workspaceReady ||
+    !hiddenReady ||
+    !taskMetaReady;
 
   if (
     needsHydration &&
@@ -38,7 +52,7 @@ export async function openTaskCommand(
     deps.hiddenTestClient
   ) {
     const manifests = await readManifestBundle(taskRoot);
-    await hydrateTaskFromRemote({
+    await syncTaskPackageFromRemote({
       collectionRoot: manifests.collectionRoot,
       homeworkId: manifests.homeworkManifest.homeworkId,
       taskId: manifests.taskManifest.taskId,
@@ -47,9 +61,7 @@ export async function openTaskCommand(
       taskDetailClient: deps.taskDetailClient,
       sourceClient: deps.sourceClient,
       hiddenTestClient: deps.hiddenTestClient,
-      templateClient: deps.templateClient,
-      passedClient: deps.passedClient,
-      answerClient: deps.answerClient,
+      mode: 'open',
     });
   }
 
@@ -60,6 +72,13 @@ export async function openTaskCommand(
     task: model,
     taskRoot,
   });
+
+  try {
+    await (deps.revealInExplorer ?? defaultRevealInExplorer)(taskRoot);
+  } catch {
+    // Best-effort only: failing to reveal Explorer should not block the open-task flow.
+  }
+
   return model;
 }
 

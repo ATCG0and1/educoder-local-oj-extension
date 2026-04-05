@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import * as vscode from 'vscode';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openTaskCommand } from '../../src/commands/openTask.js';
 
 const tempDirs: string[] = [];
@@ -31,9 +31,12 @@ afterEach(async () => {
 });
 
 describe('dashboard panel smoke', () => {
-  it('opens a dashboard panel that shows hidden test readiness and learning material state', async () => {
+  it('opens a dashboard panel that shows task-package readiness, solve state, and advanced tools', async () => {
     const taskRoot = await createTempTaskRoot();
     const vscodeMock = (vscode as any).__mock;
+    const revealInExplorer = vi.fn(async () => {
+      throw new Error('explorer unavailable');
+    });
 
     await writeJson(path.join(taskRoot, 'task.manifest.json'), {
       taskId: 'fc7pz3fm6yjh',
@@ -96,18 +99,21 @@ describe('dashboard panel smoke', () => {
           unlocked: true,
         }),
       },
-    });
+      revealInExplorer,
+    } as any);
 
     const panel = vscodeMock.createdPanels.at(-1);
-    expect(panel.title).toContain('Educoder Local OJ');
-    expect(panel.webview.html).toContain('hidden tests');
-    expect(panel.webview.html).toContain('template: ready');
-    expect(panel.webview.html).toContain('passed: ready');
-    expect(panel.webview.html).toContain('answer: 1');
-    expect(panel.webview.html).toContain('answer unlocked: 0');
-    expect(panel.webview.html).toContain('repo: missing');
-    expect(panel.webview.html).toContain('history: 1');
-    expect(panel.webview.html).toContain('Sync Full Repository');
-    expect(panel.webview.html).toContain('Sync Answers');
+    expect(panel.title).toContain('题目工作台');
+    expect(revealInExplorer).toHaveBeenCalledWith(taskRoot);
+    expect(panel.webview.html).toContain('资料完整度');
+    expect(panel.webview.html).toContain('题面');
+    expect(panel.webview.html).toContain('模板');
+    expect(panel.webview.html).toContain('答案与解析');
+    expect(panel.webview.html).toContain('已解锁答案');
+    expect(panel.webview.html).toContain('远端仓库');
+    expect(panel.webview.html).toContain('历史记录');
+    expect(panel.webview.html).toContain('同步远端仓库（高级）');
+    expect(panel.webview.html).toContain('同步答案');
+    expect(panel.webview.html).toContain('提交评测（本地 + 头哥）');
   });
 });

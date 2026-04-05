@@ -192,6 +192,7 @@ describe('command registration', () => {
     const result = await vscode.commands.executeCommand('educoderLocalOj.syncCollectionPackages');
 
     expect(result).toMatchObject({
+      collectionRoot: expect.stringContaining('Educoder Local OJ'),
       syncedTasks: [
         expect.objectContaining({
           taskRoot: expect.stringContaining('fc7pz3fm6yjh'),
@@ -199,6 +200,16 @@ describe('command registration', () => {
       ],
     });
     expect(vscodeMock.showOpenDialog).toHaveBeenCalledTimes(1);
+    expect(vscodeMock.updateWorkspaceFolders).toHaveBeenCalledWith(
+      0,
+      0,
+      expect.objectContaining({
+        name: 'Educoder Local OJ',
+        uri: expect.objectContaining({
+          fsPath: path.join(rootDir, 'Educoder Local OJ'),
+        }),
+      }),
+    );
     await expect(
       readFile(
         path.join(
@@ -216,6 +227,15 @@ describe('command registration', () => {
         'utf8',
       ),
     ).resolves.toContain('# 题面');
+    expect(vscodeMock.workspaceFolders).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          uri: expect.objectContaining({
+            fsPath: path.join(rootDir, 'Educoder Local OJ'),
+          }),
+        }),
+      ]),
+    );
   });
 
   it('opens the real statement file and current code file through registered commands', async () => {
