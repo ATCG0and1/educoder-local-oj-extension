@@ -1,10 +1,12 @@
 import type { CollectionIndex } from '../api/educoderClient.js';
-import { getCollectionRoot } from '../workspace/directoryLayout.js';
+import { getCollectionRoot, getTaskLayoutPaths } from '../workspace/directoryLayout.js';
 import {
   loadCollectionManifest,
   mergeCollectionManifests,
   writeCollectionManifestArtifacts,
   type CollectionManifest,
+  type HomeworkManifest,
+  type TaskManifest,
 } from './manifestStore.js';
 
 export interface CollectionIndexClient {
@@ -24,6 +26,18 @@ export interface SyncCollectionIndexInput {
 export interface SyncCollectionIndexResult {
   rootDir: string;
   manifest: CollectionManifest;
+}
+
+export interface CollectionTaskPackageSyncTarget {
+  homework: HomeworkManifest;
+  task: TaskManifest;
+  taskRoot: string;
+}
+
+export interface CollectionTaskPackageSyncResult<T = unknown> extends CollectionTaskPackageSyncTarget {
+  ok: boolean;
+  result?: T;
+  errorMessage?: string;
 }
 
 export async function syncCollectionIndex({
@@ -49,4 +63,57 @@ export async function syncCollectionIndex({
     rootDir,
     manifest: merged,
   };
+}
+
+export async function syncCollectionTaskPackages<T>(input: {
+  collectionRoot: string;
+  manifest: CollectionManifest;
+  syncTaskPackage: (target: CollectionTaskPackageSyncTarget) => Promise<T>;
+}): Promise<Array<CollectionTaskPackageSyncResult<T>>> {
+  const syncedTasks: Array<CollectionTaskPackageSyncResult<T>> = [];
+
+  for (const homework of input.manifest.homeworks) {
+    for (const task of homework.tasks) {
+      const taskRoot = getTaskLayoutPaths({
+        collectionRoot: input.collectionRoot,
+        homeworkId: homework.homeworkId,
+        taskId: task.taskId,
+        homeworkDirName: homework.folderName,
+        taskDirName: task.folderName,
+      }).taskRoot;
+      try {
+        const result = await input.syncTaskPackage({
+          homework,
+          task,
+          taskRoot,
+        });
+
+        syncedTasks.push({
+          homework,
+          task,
+          taskRoot,
+          ok: true,
+          result,
+        });
+      } catch (error) {
+        syncedTasks.push({
+          homework,
+          task,
+          taskRoot,
+          ok: false,
+          errorMessage: formatSyncError(error),
+        });
+      }
+    }
+  }
+
+  return syncedTasks;
+}
+
+function formatSyncError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return String(error);
 }

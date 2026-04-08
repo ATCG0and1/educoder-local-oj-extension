@@ -24,7 +24,7 @@ afterEach(async () => {
 describe('runOfficialJudgeBridge', () => {
   it('reuses the previous result when the workspace code hash is unchanged', async () => {
     const taskRoot = await createTempTaskRoot();
-    await writeTextFile(path.join(taskRoot, 'workspace', 'main.cpp'), 'int main() { return 0; }\n');
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'main.cpp'), 'int main() { return 0; }\n');
 
     const executeRemoteJudge = vi.fn(async () => ({
       verdict: 'passed' as const,
@@ -49,7 +49,7 @@ describe('runOfficialJudgeBridge', () => {
 
   it('bypasses the cache in force mode and writes remote artifacts', async () => {
     const taskRoot = await createTempTaskRoot();
-    await writeTextFile(path.join(taskRoot, 'workspace', 'main.cpp'), 'int main() { return 0; }\n');
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'main.cpp'), 'int main() { return 0; }\n');
 
     const executeRemoteJudge = vi
       .fn()
@@ -77,8 +77,8 @@ describe('runOfficialJudgeBridge', () => {
     expect(forcedRun.summary.verdict).toBe('passed');
     expect(executeRemoteJudge).toHaveBeenCalledTimes(2);
 
-    await expect(access(path.join(taskRoot, 'reports', 'latest_remote.json'))).resolves.toBeUndefined();
-    const remoteLogs = await readdir(path.join(taskRoot, '_educoder', 'logs', 'remote'));
+    await expect(access(path.join(taskRoot, '_educoder', 'judge', 'latest_remote.json'))).resolves.toBeUndefined();
+    const remoteLogs = await readdir(path.join(taskRoot, '_educoder', 'judge', 'remote_runs'));
     expect(remoteLogs.length).toBeGreaterThanOrEqual(2);
   });
 });

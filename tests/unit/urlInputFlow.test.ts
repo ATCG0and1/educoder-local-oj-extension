@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { resolveCollectionUrl } from '../../src/core/url/urlInputFlow.js';
 
 describe('resolveCollectionUrl', () => {
-  it('uses clipboard value when it already contains a valid collection url', async () => {
+  it('always prompts for manual confirmation and prefills the clipboard url when it is valid', async () => {
     const prompt = {
-      showInputBox: vi.fn(async () => undefined),
+      showInputBox: vi.fn(async (options?: { value?: string }) => options?.value),
     };
 
     await expect(
@@ -20,7 +20,12 @@ describe('resolveCollectionUrl', () => {
       categoryId: '1316861',
     });
 
-    expect(prompt.showInputBox).not.toHaveBeenCalled();
+    expect(prompt.showInputBox).toHaveBeenCalledTimes(1);
+    expect(prompt.showInputBox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0',
+      }),
+    );
   });
 
   it('falls back to manual url paste when clipboard text is invalid', async () => {
@@ -53,7 +58,9 @@ describe('resolveCollectionUrl', () => {
           showInputBox: async () => 'https://www.educoder.net/problems/1',
         },
       }),
-    ).rejects.toThrow('请先在 Edge 复制头歌 shixun_homework 页面链接');
+    ).rejects.toThrow(
+      '请复制或粘贴头歌 shixun_homework 页面链接（https://www.educoder.net/classrooms/.../shixun_homework/...）',
+    );
   });
 
   it('throws the fixed educoder guidance message when the user cancels fallback input', async () => {
@@ -66,6 +73,8 @@ describe('resolveCollectionUrl', () => {
           showInputBox: async () => undefined,
         },
       }),
-    ).rejects.toThrow('请先在 Edge 复制头歌 shixun_homework 页面链接');
+    ).rejects.toThrow(
+      '请复制或粘贴头歌 shixun_homework 页面链接（https://www.educoder.net/classrooms/.../shixun_homework/...）',
+    );
   });
 });

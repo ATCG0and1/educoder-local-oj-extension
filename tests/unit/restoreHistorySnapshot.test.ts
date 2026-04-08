@@ -89,4 +89,60 @@ describe('history commands', () => {
       '#pragma once\n',
     );
   });
+
+  it('preserves unrelated workspace files when restoring a single historical file snapshot', async () => {
+    const taskRoot = await createTempTaskRoot();
+
+    await writeJson(path.join(taskRoot, 'task.manifest.json'), {
+      taskId: 'fc7pz3fm6yjh',
+      name: '第1关 基本实训：链表操作',
+      position: 1,
+      folderName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+    });
+    await writeJson(path.join(taskRoot, '..', '..', 'homework.manifest.json'), {
+      homeworkId: '3727439',
+      name: '2-2 基本实训-链表操作',
+      folderName: '2-2 基本实训-链表操作 [3727439]',
+      shixunIdentifier: 'a9k8ufmh',
+      tasks: [],
+    });
+    await import('node:fs/promises').then(({ mkdir }) =>
+      Promise.all([
+        mkdir(path.join(taskRoot, 'workspace', 'test1'), { recursive: true }),
+        mkdir(path.join(taskRoot, 'workspace', 'keep'), { recursive: true }),
+      ]),
+    );
+    await Promise.all([
+      writeFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'stale\n', 'utf8'),
+      writeFile(path.join(taskRoot, 'workspace', 'keep', 'notes.txt'), 'keep me\n', 'utf8'),
+    ]);
+
+    const historyClient = {
+      fetchHistoryIndex: async () => ({
+        filePath: 'test1/tasks.h',
+        evaluations: [{ queryIndex: 14, createdAt: '2026-03-31T16:09:26.000+08:00', outputDetail: '评测通过' }],
+        redoLogs: [],
+        rawEvaluateLogs: { status: 0, data: { count: 1 } },
+        rawRedoLogs: { status: 0, data: { count: 0 } },
+      }),
+      fetchHistorySnapshot: async () => ({
+        queryIndex: 14,
+        filePath: 'test1/tasks.h',
+        content: '#pragma once\n',
+        createdAt: '2026-03-31T16:09:26.000+08:00',
+        outputDetail: '评测通过',
+        raw: {},
+      }),
+    };
+
+    await syncTaskHistory(taskRoot, { historyClient });
+    await restoreHistorySnapshot(taskRoot, 14, { historyClient });
+
+    await expect(readFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      '#pragma once\n',
+    );
+    await expect(readFile(path.join(taskRoot, 'workspace', 'keep', 'notes.txt'), 'utf8')).resolves.toBe(
+      'keep me\n',
+    );
+  });
 });

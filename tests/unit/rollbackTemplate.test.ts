@@ -72,7 +72,7 @@ describe('rollbackTemplate', () => {
     await expect(readFile(path.join(taskRoot, '_educoder', 'template', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       '#pragma once\n',
     );
-    await expect(readFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       '#pragma once\n',
     );
   });
@@ -103,8 +103,90 @@ describe('rollbackTemplate', () => {
     });
 
     expect(fetchTemplateFiles).not.toHaveBeenCalled();
-    await expect(readFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'cached\n',
+    );
+  });
+
+  it('fails without destroying workspace when the fetched template snapshot is empty', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await import('node:fs/promises').then(({ mkdir }) =>
+      mkdir(path.join(taskRoot, 'code', 'current', 'test1'), { recursive: true }),
+    );
+    await writeFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'keep\n', 'utf8');
+
+    await writeJson(path.join(taskRoot, 'task.manifest.json'), {
+      taskId: 'fc7pz3fm6yjh',
+      name: '第1关 基本实训：链表操作',
+      position: 1,
+      folderName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+    });
+    await writeJson(path.join(taskRoot, '..', '..', 'homework.manifest.json'), {
+      homeworkId: '3727439',
+      name: '2-2 基本实训-链表操作',
+      folderName: '2-2 基本实训-链表操作 [3727439]',
+      shixunIdentifier: 'a9k8ufmh',
+      tasks: [],
+    });
+
+    await expect(
+      rollbackTemplate(taskRoot, {
+        taskDetailClient: {
+          getTaskDetail: async () => ({
+            taskId: 'fc7pz3fm6yjh',
+            homeworkId: '3727439',
+            taskName: '基本实训：链表操作',
+            editablePaths: ['test1/tasks.h'],
+            testSets: [],
+            raw: {},
+          }),
+        },
+        templateClient: {
+          fetchTemplateFiles: async () => [],
+        },
+      }),
+    ).rejects.toThrow('模板快照为空');
+
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      'keep\n',
+    );
+  });
+
+  it('preserves unrelated workspace files when rolling back from a template snapshot', async () => {
+    const taskRoot = await createTempTaskRoot();
+
+    await import('node:fs/promises').then(({ mkdir }) =>
+      Promise.all([
+        mkdir(path.join(taskRoot, '_educoder', 'template', 'test1'), { recursive: true }),
+        mkdir(path.join(taskRoot, 'code', 'current', 'keep'), { recursive: true }),
+      ]),
+    );
+    await Promise.all([
+      writeFile(path.join(taskRoot, '_educoder', 'template', 'test1', 'tasks.h'), 'cached\n', 'utf8'),
+      writeFile(path.join(taskRoot, 'code', 'current', 'keep', 'notes.txt'), 'keep me\n', 'utf8'),
+    ]);
+
+    await rollbackTemplate(taskRoot, {
+      taskDetailClient: {
+        getTaskDetail: async () => ({
+          taskId: 'fc7pz3fm6yjh',
+          homeworkId: '3727439',
+          taskName: '基本实训：链表操作',
+          editablePaths: ['test1/tasks.h'],
+          testSets: [],
+          raw: {},
+        }),
+      },
+      templateClient: {
+        fetchTemplateFiles: vi.fn(),
+      },
+    });
+
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      'cached\n',
+    );
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'keep', 'notes.txt'), 'utf8')).resolves.toBe(
+      'keep me\n',
     );
   });
 });

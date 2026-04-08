@@ -1,10 +1,11 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   readHistoryIndex,
   writeHistoryArtifacts,
+  writeHistorySnapshot,
 } from '../../src/core/recovery/historyStore.js';
 
 const tempDirs: string[] = [];
@@ -46,5 +47,20 @@ describe('historyStore', () => {
     await expect(readFile(path.join(taskRoot, '_educoder', 'history', 'index.json'), 'utf8')).resolves.toContain(
       '"queryIndex": 14',
     );
+  });
+
+  it('rejects unsafe historical snapshot paths', async () => {
+    const taskRoot = await createTempTaskRoot();
+
+    await expect(
+      writeHistorySnapshot(taskRoot, {
+        queryIndex: 14,
+        filePath: '../escape.txt',
+        content: 'escape\n',
+        raw: {},
+      }),
+    ).rejects.toThrow('Unsafe relative file path');
+
+    await expect(access(path.join(taskRoot, '_educoder', 'history', 'escape.txt'))).rejects.toBeDefined();
   });
 });

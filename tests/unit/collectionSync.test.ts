@@ -294,6 +294,69 @@ describe('syncCollectionIndex', () => {
         '02 第2关 新增关卡 [task-2]',
       ),
     ]);
+    expect(result.every((item) => item.ok)).toBe(true);
+  });
+
+  it('continues syncing the rest of the chapter when one task package fails', async () => {
+    const rootDir = await createTempRoot();
+    const manifest = {
+      courseId: 'ufr7sxlc',
+      courseFolderName: '课程 [ufr7sxlc]',
+      categoryId: '1316861',
+      categoryFolderName: '第二章 线性表及应用 [1316861]',
+      homeworks: [
+        {
+          homeworkId: '3727439',
+          name: '2-2 基本实训-链表操作',
+          folderName: '2-2 基本实训-链表操作 [3727439]',
+          shixunIdentifier: 'a9k8ufmh',
+          myshixunIdentifier: 'obcts7i5fx',
+          studentWorkId: '286519999',
+          tasks: [
+            {
+              taskId: 'task-ready',
+              name: '第1关 正常题',
+              position: 1,
+              folderName: '01 第1关 正常题 [task-ready]',
+            },
+            {
+              taskId: 'task-broken',
+              name: '第2关 异常题',
+              position: 2,
+              folderName: '02 第2关 异常题 [task-broken]',
+            },
+            {
+              taskId: 'task-later',
+              name: '第3关 后续题',
+              position: 3,
+              folderName: '03 第3关 后续题 [task-later]',
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = await syncCollectionTaskPackages({
+      collectionRoot: path.join(rootDir, '课程 [ufr7sxlc]', '第二章 线性表及应用 [1316861]'),
+      manifest,
+      syncTaskPackage: async ({ task }) => {
+        if (task.taskId === 'task-broken') {
+          throw new Error('answers missing');
+        }
+
+        return { taskId: task.taskId };
+      },
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({ task: expect.objectContaining({ taskId: 'task-ready' }), ok: true }),
+      expect.objectContaining({
+        task: expect.objectContaining({ taskId: 'task-broken' }),
+        ok: false,
+        errorMessage: 'answers missing',
+      }),
+      expect.objectContaining({ task: expect.objectContaining({ taskId: 'task-later' }), ok: true }),
+    ]);
   });
 });
 
@@ -345,12 +408,23 @@ describe('syncCollectionPackages', () => {
       syncTaskPackage: async (taskRoot) => {
         await mkdir(path.join(taskRoot, 'problem'), { recursive: true });
         await writeFile(path.join(taskRoot, 'problem', 'statement.md'), '# 题面\n', 'utf8');
-        return { taskRoot };
+        return {
+          taskRoot,
+          materials: {
+            statement: 'ready',
+            currentCode: 'ready',
+            templateCode: 'ready',
+            tests: 'ready',
+            answers: 'ready',
+            metadata: 'ready',
+          },
+        };
       },
     });
 
     expect(result.syncedTasks).toHaveLength(1);
     expect(result.syncedTasks[0]?.task.taskId).toBe('fc7pz3fm6yjh');
+    expect(result.defaultTask?.task.taskId).toBe('fc7pz3fm6yjh');
     expect(showOpenDialog).toHaveBeenCalledTimes(1);
     expect(showInputBox).toHaveBeenCalledTimes(1);
     await expect(
@@ -361,6 +435,12 @@ describe('syncCollectionPackages', () => {
     await expect(
       readFile(path.join(result.syncedTasks[0]!.taskRoot, 'problem', 'statement.md'), 'utf8'),
     ).resolves.toContain('# 题面');
+    await expect(
+      readFile(path.join(result.productRoot, '.vscode', 'settings.json'), 'utf8'),
+    ).resolves.toContain('"**/_educoder": true');
+    await expect(
+      readFile(path.join(result.productRoot, '.vscode', 'settings.json'), 'utf8'),
+    ).resolves.toContain('"**/code/template": true');
   });
 
   it('reuses a remembered storage root instead of prompting every one-click sync', async () => {
@@ -409,11 +489,167 @@ describe('syncCollectionPackages', () => {
       },
       syncTaskPackage: async (taskRoot) => {
         await mkdir(taskRoot, { recursive: true });
-        return { taskRoot };
+        return {
+          taskRoot,
+          materials: {
+            statement: 'ready',
+            currentCode: 'ready',
+            templateCode: 'ready',
+            tests: 'ready',
+            answers: 'ready',
+            metadata: 'ready',
+          },
+        };
       },
     });
 
     expect(result.syncedTasks).toHaveLength(1);
     expect(showOpenDialog).not.toHaveBeenCalled();
+  });
+
+  it('prefers an incomplete task over the remembered task when choosing the default post-sync task', async () => {
+    const rootDir = await createTempRoot();
+    const collectionRoot = path.join(
+      rootDir,
+      'Educoder Local OJ',
+      '课程 [ufr7sxlc]',
+      '第二章 线性表及应用 [1316861]',
+    );
+    const rememberedTaskRoot = path.join(
+      collectionRoot,
+      'homeworks',
+      '2-2 基本实训-链表操作 [3727439]',
+      'tasks',
+      '03 第3关 已做过 [task-last]',
+    );
+    const context = createContext();
+    await context.globalState.update('lastOpenedTaskRoot', rememberedTaskRoot);
+
+    const result = await syncCollectionPackages({
+      context,
+      window: { showOpenDialog: vi.fn(async () => [{ fsPath: rootDir }]) },
+      clipboardEnv: {
+        clipboard: {
+          readText: async () =>
+            'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0',
+        },
+      },
+      input: {
+        showInputBox: vi.fn(async () => 'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0'),
+      },
+      client: {
+        getCollectionIndex: async () => ({
+          courseId: 'ufr7sxlc',
+          courseName: '课程',
+          categoryId: '1316861',
+          categoryName: '第二章 线性表及应用',
+          homeworks: [
+            {
+              homeworkId: '3727439',
+              name: '2-2 基本实训-链表操作',
+              shixunIdentifier: 'a9k8ufmh',
+              myshixunIdentifier: 'obcts7i5fx',
+              studentWorkId: '286519999',
+              tasks: [
+                { taskId: 'task-ready', name: '第1关 正常题', position: 1 },
+                { taskId: 'task-broken', name: '第2关 异常题', position: 2 },
+                { taskId: 'task-last', name: '第3关 已做过', position: 3 },
+              ],
+            },
+          ],
+        }),
+      },
+      syncTaskPackage: async (_taskRoot, info) => ({
+        taskId: info.task.taskId,
+        materials: {
+          statement: 'ready',
+          currentCode: 'ready',
+          templateCode: 'ready',
+          tests: 'ready',
+          answers: info.task.taskId === 'task-broken' ? 'missing' : 'ready',
+          metadata: 'ready',
+        },
+      }),
+    });
+
+    expect(result.defaultTask).toMatchObject({
+      task: {
+        taskId: 'task-broken',
+      },
+      reason: 'incomplete',
+    });
+  });
+
+  it('reopens the remembered task when the synced chapter has no incomplete tasks', async () => {
+    const rootDir = await createTempRoot();
+    const collectionRoot = path.join(
+      rootDir,
+      'Educoder Local OJ',
+      '课程 [ufr7sxlc]',
+      '第二章 线性表及应用 [1316861]',
+    );
+    const rememberedTaskRoot = path.join(
+      collectionRoot,
+      'homeworks',
+      '2-2 基本实训-链表操作 [3727439]',
+      'tasks',
+      '02 第2关 已做过 [task-last]',
+    );
+    const context = createContext();
+    await context.globalState.update('lastOpenedTaskRoot', rememberedTaskRoot);
+
+    const result = await syncCollectionPackages({
+      context,
+      window: { showOpenDialog: vi.fn(async () => [{ fsPath: rootDir }]) },
+      clipboardEnv: {
+        clipboard: {
+          readText: async () =>
+            'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0',
+        },
+      },
+      input: {
+        showInputBox: vi.fn(async () => 'https://www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861?tabs=0'),
+      },
+      client: {
+        getCollectionIndex: async () => ({
+          courseId: 'ufr7sxlc',
+          courseName: '课程',
+          categoryId: '1316861',
+          categoryName: '第二章 线性表及应用',
+          homeworks: [
+            {
+              homeworkId: '3727439',
+              name: '2-2 基本实训-链表操作',
+              shixunIdentifier: 'a9k8ufmh',
+              myshixunIdentifier: 'obcts7i5fx',
+              studentWorkId: '286519999',
+              tasks: [
+                { taskId: 'task-first', name: '第1关 首题', position: 1 },
+                { taskId: 'task-last', name: '第2关 已做过', position: 2 },
+              ],
+            },
+          ],
+        }),
+      },
+      syncTaskPackage: async (taskRoot) => ({
+        taskRoot,
+        materials: {
+          statement: 'ready',
+          currentCode: 'ready',
+          templateCode: 'ready',
+          tests: 'ready',
+          answers: 'ready',
+          metadata: 'ready',
+        },
+      }),
+    });
+
+    expect(result.defaultTask).toMatchObject({
+      task: {
+        taskId: 'task-last',
+      },
+      taskRoot: rememberedTaskRoot,
+      reason: 'last_opened',
+    });
   });
 });

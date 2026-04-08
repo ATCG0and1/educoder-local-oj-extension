@@ -2,6 +2,12 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { EducoderClient } from '../api/educoderClient.js';
 import type { ExecuteRemoteJudgeInput, RemoteOfficialJudgeResult } from './officialJudge.js';
+import { normalizeSafeRelativeFilePath } from '../workspace/workspaceInit.js';
+import { resolveTaskPackagePaths } from '../workspace/taskPackageMigration.js';
+
+export const OFFICIAL_JUDGE_META_REQUIRED_ERROR_MESSAGE =
+  '任务元数据缺失，请先打开题目完成同步后再运行官方评测。';
+export const OFFICIAL_JUDGE_CODE_REQUIRED_ERROR_MESSAGE = '当前代码目录中没有可提交的源文件。';
 
 export interface OfficialJudgeTaskMeta {
   taskId: string;
@@ -12,6 +18,7 @@ export interface OfficialJudgeTaskMeta {
   currentUserId?: number;
   userLogin?: string;
   myshixunIdentifier?: string;
+  editablePaths?: string[];
 }
 
 interface UpdateFileResponse {
@@ -52,7 +59,7 @@ export function getDefaultOfficialJudgeExecutor(): OfficialJudgeExecutor {
 export function createOfficialJudgeExecutor(client: EducoderClient): OfficialJudgeExecutor {
   return async ({ taskRoot }) => {
     const meta = await readOfficialJudgeMeta(taskRoot);
-    const workspaceFiles = await readWorkspaceFiles(taskRoot);
+    const workspaceFiles = await readWorkspaceFiles(taskRoot, meta);
 
     if (!meta.myshixunIdentifier || !meta.userLogin) {
       throw new Error('任务元数据缺少官方评测所需的 myshixun 标识或用户登录名。');
@@ -88,7 +95,7 @@ export function createOfficialJudgeExecutor(client: EducoderClient): OfficialJud
     }
 
     if (!updateResult) {
-      throw new Error('workspace 中没有可提交的源文件。');
+      throw new Error(OFFICIAL_JUDGE_CODE_REQUIRED_ERROR_MESSAGE);
     }
 
     const gameBuild = await client.post<GameBuildResponse>(
@@ -129,24 +136,75 @@ export function createOfficialJudgeExecutor(client: EducoderClient): OfficialJud
 }
 
 export async function readOfficialJudgeMeta(taskRoot: string): Promise<OfficialJudgeTaskMeta> {
-  return JSON.parse(
-    await readFile(path.join(taskRoot, '_educoder', 'meta', 'task.json'), 'utf8'),
-  ) as OfficialJudgeTaskMeta;
+  try {
+    return JSON.parse(
+      await readFile(path.join(taskRoot, '_educoder', 'meta', 'task.json'), 'utf8'),
+    ) as OfficialJudgeTaskMeta;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error(OFFICIAL_JUDGE_META_REQUIRED_ERROR_MESSAGE);
+    }
+
+    throw error;
+  }
 }
 
-async function readWorkspaceFiles(taskRoot: string): Promise<Array<{ path: string; content: string }>> {
-  const workspaceDir = path.join(taskRoot, 'workspace');
+async function readWorkspaceFiles(
+  taskRoot: string,
+  meta?: OfficialJudgeTaskMeta,
+): Promise<Array<{ path: string; content: string }>> {
+  const resolvedPaths = await resolveTaskPackagePaths(taskRoot);
+  const workspaceDir = resolvedPaths.currentCodeDir;
   const relativePaths = await collectWorkspaceFiles(workspaceDir, workspaceDir);
+  const orderedPaths = orderWorkspacePaths(relativePaths, meta?.editablePaths);
   return Promise.all(
-    relativePaths.map(async (relativePath) => ({
+    orderedPaths.map(async (relativePath) => ({
       path: relativePath,
       content: await readFile(path.join(workspaceDir, relativePath), 'utf8'),
     })),
   );
 }
 
+function orderWorkspacePaths(
+  relativePaths: string[],
+  editablePaths: string[] | undefined,
+): string[] {
+  if (editablePaths === undefined) {
+    return relativePaths;
+  }
+
+  if (editablePaths.length === 0) {
+    return [];
+  }
+
+  const existing = new Set(relativePaths);
+  const orderedEditablePaths = editablePaths
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .map((item) => {
+      try {
+        return normalizeSafeRelativeFilePath(item);
+      } catch {
+        return undefined;
+      }
+    })
+    .filter((item): item is string => Boolean(item))
+    .filter((item, index, items) => items.indexOf(item) === index)
+    .filter((item) => existing.has(item));
+
+  return orderedEditablePaths;
+}
+
 async function collectWorkspaceFiles(rootDir: string, currentDir: string): Promise<string[]> {
-  const entries = await readdir(currentDir, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await readdir(currentDir, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  }
   const nested = await Promise.all(
     entries.map(async (entry) => {
       const absolutePath = path.join(currentDir, entry.name);

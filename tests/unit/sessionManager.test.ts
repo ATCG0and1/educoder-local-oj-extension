@@ -89,4 +89,71 @@ describe('resolveSession', () => {
     expect(login).toHaveBeenCalledTimes(1);
     expect(context.globalState.get(SESSION_CACHE_KEY)).toEqual(loggedInSession);
   });
+
+  it('skips cached cookies when a force refresh is requested', async () => {
+    const cachedSession: SessionCookies = {
+      _educoder_session: 'stale-session',
+      autologin_trustie: 'stale-trustie',
+    };
+    const edgeSession: SessionCookies = {
+      _educoder_session: 'fresh-session',
+      autologin_trustie: 'fresh-trustie',
+    };
+    const context = createContext(cachedSession);
+    const validate = vi.fn(async () => true);
+    const loadFromEdge = vi.fn(async () => edgeSession);
+
+    await expect(
+      resolveSession({ context, validate, loadFromEdge, forceRefresh: true }),
+    ).resolves.toEqual(edgeSession);
+
+    expect(loadFromEdge).toHaveBeenCalledTimes(1);
+    expect(context.globalState.get(SESSION_CACHE_KEY)).toEqual(edgeSession);
+    expect(validate).toHaveBeenCalledTimes(1);
+    expect(validate).toHaveBeenCalledWith(edgeSession);
+  });
+
+  it('falls back to interactive login when force refresh only recovers the same stale edge session', async () => {
+    const cachedSession: SessionCookies = {
+      _educoder_session: 'stale-session',
+      autologin_trustie: 'stale-trustie',
+    };
+    const loggedInSession: SessionCookies = {
+      _educoder_session: 'fresh-session',
+      autologin_trustie: 'fresh-trustie',
+    };
+    const context = createContext(cachedSession);
+    const validate = vi.fn(async () => true);
+    const loadFromEdge = vi.fn(async () => cachedSession);
+    const login = vi.fn(async () => loggedInSession);
+
+    await expect(
+      resolveSession({ context, validate, loadFromEdge, login, forceRefresh: true }),
+    ).resolves.toEqual(loggedInSession);
+
+    expect(loadFromEdge).toHaveBeenCalledTimes(1);
+    expect(login).toHaveBeenCalledTimes(1);
+    expect(context.globalState.get(SESSION_CACHE_KEY)).toEqual(loggedInSession);
+  });
+
+  it('falls back to interactive login when edge reuse probing throws', async () => {
+    const context = createContext();
+    const loggedInSession: SessionCookies = {
+      _educoder_session: 'fresh-session',
+      autologin_trustie: 'fresh-trustie',
+    };
+    const validate = vi.fn(async (cookies: SessionCookies) => cookies === loggedInSession);
+    const loadFromEdge = vi.fn(async () => {
+      throw new Error('Edge DevTools unavailable');
+    });
+    const login = vi.fn(async () => loggedInSession);
+
+    await expect(resolveSession({ context, validate, loadFromEdge, login })).resolves.toEqual(
+      loggedInSession,
+    );
+
+    expect(loadFromEdge).toHaveBeenCalledTimes(1);
+    expect(login).toHaveBeenCalledTimes(1);
+    expect(context.globalState.get(SESSION_CACHE_KEY)).toEqual(loggedInSession);
+  });
 });

@@ -9,6 +9,7 @@ export interface ManualCollectionUrlInput {
   showInputBox(options: {
     prompt: string;
     placeHolder: string;
+    value?: string;
     ignoreFocusOut: boolean;
     validateInput(value: string): string | undefined;
   }): PromiseLike<string | undefined> | string | undefined;
@@ -21,27 +22,36 @@ export interface CollectionUrlInputDeps extends ClipboardEnv {
 export async function resolveCollectionUrl(
   deps: CollectionUrlInputDeps,
 ): Promise<EducoderCollectionUrl> {
-  try {
-    return parseEducoderCollectionUrl(await deps.clipboard.readText());
-  } catch {
-    const manualInput = await deps.input.showInputBox({
-      prompt: MANUAL_COLLECTION_URL_PROMPT,
-      placeHolder: MANUAL_COLLECTION_URL_PLACEHOLDER,
-      ignoreFocusOut: true,
-      validateInput: (value) => {
-        try {
-          parseEducoderCollectionUrl(value);
-          return undefined;
-        } catch {
-          return CLIPBOARD_URL_ERROR_MESSAGE;
-        }
-      },
-    });
+  const clipboardText = await deps.clipboard.readText();
+  const defaultValue = tryGetValidCollectionUrl(clipboardText);
+  const manualInput = await deps.input.showInputBox({
+    prompt: MANUAL_COLLECTION_URL_PROMPT,
+    placeHolder: MANUAL_COLLECTION_URL_PLACEHOLDER,
+    value: defaultValue,
+    ignoreFocusOut: true,
+    validateInput: (value) => {
+      try {
+        parseEducoderCollectionUrl(value);
+        return undefined;
+      } catch {
+        return CLIPBOARD_URL_ERROR_MESSAGE;
+      }
+    },
+  });
 
-    try {
-      return parseEducoderCollectionUrl(manualInput ?? '');
-    } catch {
-      throw new Error(CLIPBOARD_URL_ERROR_MESSAGE);
-    }
+  try {
+    return parseEducoderCollectionUrl(manualInput ?? '');
+  } catch {
+    throw new Error(CLIPBOARD_URL_ERROR_MESSAGE);
+  }
+}
+
+function tryGetValidCollectionUrl(value: string): string | undefined {
+  try {
+    return parseEducoderCollectionUrl(value)
+      ? value.trim()
+      : undefined;
+  } catch {
+    return undefined;
   }
 }

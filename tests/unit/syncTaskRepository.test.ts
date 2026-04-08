@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 describe('syncTaskRepository', () => {
-  it('pulls the full remote repository into _educoder/repository/remote and updates metadata', async () => {
+  it('pulls the full remote repository into _educoder/repository/remote, marks it as an advanced/internal surface, and updates metadata', async () => {
     const taskRoot = await createTempTaskRoot();
     await writeJson(path.join(taskRoot, 'task.manifest.json'), {
       taskId: 'fc7pz3fm6yjh',
@@ -75,6 +75,12 @@ describe('syncTaskRepository', () => {
     await expect(
       readFile(path.join(taskRoot, '_educoder', 'repository', 'remote', 'test1', 'tasks.h'), 'utf8'),
     ).resolves.toBe('#pragma once\n');
+    await expect(
+      readFile(path.join(taskRoot, '_educoder', 'repository', 'README.md'), 'utf8'),
+    ).resolves.toContain('高级调试资料');
+    await expect(
+      readFile(path.join(taskRoot, '_educoder', 'repository', 'README.md'), 'utf8'),
+    ).resolves.toContain('不是做题主入口');
     await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
       '"repositoryFileCount": 1',
     );

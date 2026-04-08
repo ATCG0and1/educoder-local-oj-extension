@@ -8,6 +8,8 @@ import {
 export interface RemoteOfficialJudgeResult {
   verdict: OfficialJudgeVerdict;
   score: number;
+  passedCount?: number;
+  totalCount?: number;
   message?: string;
   raw: unknown;
 }
@@ -53,6 +55,8 @@ export async function runOfficialJudgeBridge(
     summary: {
       verdict: remoteResult.verdict,
       score: remoteResult.score,
+      passedCount: remoteResult.passedCount,
+      totalCount: remoteResult.totalCount,
       message: remoteResult.message,
     },
     raw: remoteResult.raw,

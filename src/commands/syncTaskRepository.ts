@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { RepositoryFetchClientLike } from '../core/api/repositoryFetchClient.js';
 import type { SourceFetchClientLike } from '../core/api/sourceFetchClient.js';
@@ -47,6 +47,11 @@ export async function syncTaskRepository(
     files,
     updatedAt: syncedAt,
   });
+  await writeFile(
+    path.join(taskRoot, '_educoder', 'repository', 'README.md'),
+    renderRepositoryGuide(manifests.taskManifest.name, syncedAt),
+    'utf8',
+  );
 
   const existing = (await readRecoveryMetadata(taskRoot)) ?? emptyRecoveryMetadata();
   await writeRecoveryMetadata(taskRoot, {
@@ -89,6 +94,24 @@ async function readOptionalJson<T>(filePath: string): Promise<T | undefined> {
 
 function stringOrUndefined(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function renderRepositoryGuide(taskName: string, syncedAt: string): string {
+  return [
+    '# 远端仓库快照',
+    '',
+    `- 任务：${taskName}`,
+    `- 同步时间：${syncedAt}`,
+    '- 该目录属于高级调试资料，用于排查远端仓库结构、源码分布和抓包验证。',
+    '- 它不是做题主入口；日常请优先使用 `problem/`、`code/`、`tests/`、`answers/`。',
+    '',
+    '## 目录说明',
+    '',
+    '- `remote/`：远端仓库文件快照',
+    '- `tree.json`：仓库树索引',
+    '- `index.json`：本次同步文件清单',
+    '',
+  ].join('\n');
 }
 
 function emptyRecoveryMetadata(): RecoveryMetadata {

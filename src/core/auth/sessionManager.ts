@@ -22,6 +22,7 @@ export interface ResolveSessionDeps {
   validate(cookies: SessionCookies): Promise<boolean>;
   loadFromEdge?: () => Promise<SessionCookies | undefined>;
   login?: () => Promise<SessionCookies | undefined>;
+  forceRefresh?: boolean;
 }
 
 export function getCachedSession(context: SessionContextLike): SessionCookies | undefined {
@@ -40,14 +41,18 @@ export async function resolveSession({
   validate,
   loadFromEdge = loadSessionFromEdge,
   login,
+  forceRefresh = false,
 }: ResolveSessionDeps): Promise<SessionCookies> {
   const cachedSession = getCachedSession(context);
-  if (cachedSession && (await validate(cachedSession))) {
-    return cachedSession;
+
+  if (!forceRefresh) {
+    if (cachedSession && (await validate(cachedSession))) {
+      return cachedSession;
+    }
   }
 
-  const edgeSession = await loadFromEdge();
-  if (edgeSession && (await validate(edgeSession))) {
+  const edgeSession = await loadEdgeSessionSafely(loadFromEdge);
+  if (edgeSession && (!forceRefresh || !isSameSession(edgeSession, cachedSession)) && (await validate(edgeSession))) {
     await setCachedSession(context, edgeSession);
     return edgeSession;
   }
@@ -61,4 +66,24 @@ export async function resolveSession({
   }
 
   throw new Error(SESSION_REQUIRED_ERROR_MESSAGE);
+}
+
+function isSameSession(
+  left: SessionCookies | undefined,
+  right: SessionCookies | undefined,
+): boolean {
+  return (
+    left?._educoder_session === right?._educoder_session &&
+    left?.autologin_trustie === right?.autologin_trustie
+  );
+}
+
+async function loadEdgeSessionSafely(
+  loadFromEdge: () => Promise<SessionCookies | undefined>,
+): Promise<SessionCookies | undefined> {
+  try {
+    return await loadFromEdge();
+  } catch {
+    return undefined;
+  }
 }

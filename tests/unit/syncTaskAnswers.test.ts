@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 describe('syncTaskAnswers', () => {
-  it('fetches answer info, unlocks answer bodies, updates recovery metadata, and generates a learning index', async () => {
+  it('fetches answer info, exposes answers under the canonical package surface, updates recovery metadata, and skips README/index artifacts', async () => {
     const taskRoot = await createTempTaskRoot();
     await writeJson(path.join(taskRoot, 'task.manifest.json'), {
       taskId: 'fc7pz3fm6yjh',
@@ -58,23 +58,61 @@ describe('syncTaskAnswers', () => {
       taskId: 'fc7pz3fm6yjh',
       answerId: 3567559,
     });
-    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'answer_info.json'), 'utf8')).resolves.toContain(
+    await expect(readFile(path.join(taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).resolves.toContain(
       '"answerId": 3567559',
     );
-    await expect(
-      readFile(path.join(taskRoot, '_educoder', 'answer', 'unlocked', 'answer-3567559.md'), 'utf8'),
-    ).resolves.toContain('int main');
+    await expect(readFile(path.join(taskRoot, 'answers', 'answer-3567559.md'), 'utf8')).resolves.toContain('int main');
     await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
       '"unlockedAnswerCount": 1',
     );
-    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'index.md'), 'utf8')).resolves.toContain(
-      '# 答案学习索引',
+    await expect(access(path.join(taskRoot, 'answers', 'answer_info.json'))).rejects.toBeDefined();
+    await expect(access(path.join(taskRoot, 'answers', 'index.md'))).rejects.toBeDefined();
+    await expect(access(path.join(taskRoot, 'README.md'))).rejects.toBeDefined();
+  });
+
+  it('clears stale unlocked answers when the refreshed answer set is now empty', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await writeJson(path.join(taskRoot, 'task.manifest.json'), {
+      taskId: 'fc7pz3fm6yjh',
+      name: '第1关 基本实训：链表操作',
+      position: 1,
+      folderName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+    });
+
+    const firstClient = {
+      fetchAnswerInfo: vi.fn(async () => ({
+        status: 3,
+        entries: [{ answerId: 3567559, name: '解题思路1', score: 50, ratio: 10 }],
+      })),
+      unlockAnswer: vi.fn(async () => ({
+        answerId: 3567559,
+        content: '```cpp\nint main() { return 0; }\n```',
+        unlocked: true,
+      })),
+    };
+    await syncTaskAnswers(taskRoot, { answerClient: firstClient });
+
+    const secondClient = {
+      fetchAnswerInfo: vi.fn(async () => ({
+        status: 3,
+        entries: [],
+      })),
+      unlockAnswer: vi.fn(async () => ({
+        answerId: 0,
+        content: '',
+        unlocked: false,
+      })),
+    };
+    await syncTaskAnswers(taskRoot, { answerClient: secondClient });
+
+    await expect(
+      access(path.join(taskRoot, 'answers', 'answer-3567559.md')),
+    ).rejects.toBeDefined();
+    await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
+      '"answerEntryCount": 0',
     );
-    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'index.md'), 'utf8')).resolves.toContain(
-      '解题思路1',
-    );
-    await expect(readFile(path.join(taskRoot, '_educoder', 'answer', 'index.md'), 'utf8')).resolves.toContain(
-      'unlocked/answer-3567559.md',
+    await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
+      '"unlockedAnswerCount": 0',
     );
   });
 });

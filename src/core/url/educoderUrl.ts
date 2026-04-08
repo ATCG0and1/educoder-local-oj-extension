@@ -19,7 +19,7 @@ export function parseEducoderCollectionUrl(raw: string): EducoderCollectionUrl {
   }
 
   const segments = parsed.pathname.split('/').filter(Boolean);
-  if (segments.length !== 4) {
+  if (segments.length < 4) {
     throw new Error('Invalid Educoder collection URL');
   }
 

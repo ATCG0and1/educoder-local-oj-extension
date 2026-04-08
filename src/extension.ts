@@ -6,6 +6,12 @@ import { forceRunOfficialJudgeCommand } from './commands/forceRunOfficialJudge.j
 import { openTaskCommand } from './commands/openTask.js';
 import { openTaskInteractive } from './commands/openTaskInteractive.js';
 import {
+  openLatestFailureInputCommand,
+  openLatestFailureOutputCommand,
+  openTaskAnswersCommand,
+  openTaskTestsCommand,
+} from './commands/openTaskPackageFiles.js';
+import {
   openCurrentCodeCommand,
   openTaskStatementCommand,
 } from './commands/openTaskMaterials.js';
@@ -28,14 +34,17 @@ import { AnswerFetchClient } from './core/api/answerFetchClient.js';
 import { HiddenTestFetchClient } from './core/api/hiddenTestFetchClient.js';
 import { HistoryFetchClient } from './core/api/historyFetchClient.js';
 import { PassedFetchClient } from './core/api/passedFetchClient.js';
+import { ProblemFetchClient } from './core/api/problemFetchClient.js';
 import { RepositoryFetchClient } from './core/api/repositoryFetchClient.js';
 import { SourceFetchClient } from './core/api/sourceFetchClient.js';
 import { TaskDetailClient } from './core/api/taskDetailClient.js';
 import { TemplateFetchClient } from './core/api/templateFetchClient.js';
+import { setStoredLastOpenedTaskRoot } from './core/config/extensionState.js';
 import {
   configureDefaultOfficialJudgeExecutor,
   createOfficialJudgeExecutor,
 } from './core/remote/officialJudgeExecutor.js';
+import type { OfficialJudgeReport } from './core/remote/officialLogStore.js';
 import {
   buildEducoderCookieHeader,
   createExtensionRuntime,
@@ -57,6 +66,10 @@ const frozenCommands = [
   'educoderLocalOj.openTask',
   'educoderLocalOj.openTaskStatement',
   'educoderLocalOj.openCurrentCode',
+  'educoderLocalOj.openTaskTests',
+  'educoderLocalOj.openTaskAnswers',
+  'educoderLocalOj.openLatestFailureInput',
+  'educoderLocalOj.openLatestFailureOutput',
   'educoderLocalOj.runLocalJudge',
   'educoderLocalOj.submitTask',
   'educoderLocalOj.rerunFailedCases',
@@ -266,6 +279,22 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
         openCurrentCodeCommand(requireTaskRoot(taskRoot)),
       );
+    case 'educoderLocalOj.openTaskTests':
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
+        openTaskTestsCommand(requireTaskRoot(taskRoot)),
+      );
+    case 'educoderLocalOj.openTaskAnswers':
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
+        openTaskAnswersCommand(requireTaskRoot(taskRoot)),
+      );
+    case 'educoderLocalOj.openLatestFailureInput':
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
+        openLatestFailureInputCommand(requireTaskRoot(taskRoot)),
+      );
+    case 'educoderLocalOj.openLatestFailureOutput':
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
+        openLatestFailureOutputCommand(requireTaskRoot(taskRoot)),
+      );
     case 'educoderLocalOj.runLocalJudge':
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
         runLocalJudgeCommand(requireTaskRoot(taskRoot)),
@@ -279,9 +308,11 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
         rerunFailedCases(requireTaskRoot(taskRoot)),
       );
     case 'educoderLocalOj.runOfficialJudge':
-      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
-        runOfficialJudgeCommand(requireTaskRoot(taskRoot)),
-      );
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), async () => {
+        const report = await runOfficialJudgeCommand(requireTaskRoot(taskRoot));
+        await notifyOfficialJudgeResult(report, false);
+        return report;
+      });
     case 'educoderLocalOj.forceRunOfficialJudge':
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
         forceRunOfficialJudgeCommand(requireTaskRoot(taskRoot)),
@@ -426,6 +457,15 @@ function resolveTaskRootFromCommandResult(result: unknown): string | undefined {
   if (
     typeof result === 'object' &&
     result !== null &&
+    'defaultTask' in result &&
+    typeof (result as { defaultTask?: { taskRoot?: unknown } }).defaultTask?.taskRoot === 'string'
+  ) {
+    return (result as { defaultTask: { taskRoot: string } }).defaultTask.taskRoot;
+  }
+
+  if (
+    typeof result === 'object' &&
+    result !== null &&
     'firstTask' in result &&
     typeof (result as { firstTask?: { taskRoot?: unknown } }).firstTask?.taskRoot === 'string'
   ) {
@@ -435,15 +475,52 @@ function resolveTaskRootFromCommandResult(result: unknown): string | undefined {
   return undefined;
 }
 
+async function notifyOfficialJudgeResult(
+  report: OfficialJudgeReport,
+  force: boolean,
+): Promise<void> {
+  const messageParts = [`${force ? '已强制提交到头哥' : '已提交到头哥（高级）'}：${formatOfficialJudgeHeadline(report)}`];
+  if (report.summary.message) {
+    messageParts.push(report.summary.message);
+  }
+  const messageText = messageParts.join(' · ');
+
+  if (report.summary.verdict === 'passed') {
+    await vscode.window.showInformationMessage(messageText);
+    return;
+  }
+
+  await vscode.window.showErrorMessage(messageText);
+}
+
+function formatOfficialJudgeHeadline(report: OfficialJudgeReport): string {
+  const prefix = report.summary.verdict === 'passed' ? '已通过' : '未通过';
+  if (
+    typeof report.summary.passedCount === 'number' &&
+    Number.isFinite(report.summary.passedCount) &&
+    typeof report.summary.totalCount === 'number' &&
+    Number.isFinite(report.summary.totalCount) &&
+    report.summary.totalCount > 0
+  ) {
+    return `${prefix} ${report.summary.passedCount}/${report.summary.totalCount}`;
+  }
+
+  return prefix;
+}
+
 function createDefaultOpenTaskDeps(_context: vscode.ExtensionContext) {
-  const client = getActiveRuntime().client;
+  const runtime = getActiveRuntime();
+  const client = runtime.client;
   return {
     taskDetailClient: new TaskDetailClient(client),
     sourceClient: new SourceFetchClient(client),
     hiddenTestClient: new HiddenTestFetchClient(client),
+    repositoryClient: new RepositoryFetchClient(client),
+    problemClient: createProblemClient(runtime),
     templateClient: new TemplateFetchClient(client),
     passedClient: new PassedFetchClient(client),
     answerClient: new AnswerFetchClient(client),
+    onTaskOpened: async (taskRoot: string) => setStoredLastOpenedTaskRoot(_context, taskRoot),
   };
 }
 
@@ -457,11 +534,14 @@ function createDefaultRollbackDeps(_context: vscode.ExtensionContext) {
 }
 
 function createDefaultSyncTaskPackageDeps(_context: vscode.ExtensionContext) {
-  const client = getActiveRuntime().client;
+  const runtime = getActiveRuntime();
+  const client = runtime.client;
   return {
     taskDetailClient: new TaskDetailClient(client),
     sourceClient: new SourceFetchClient(client),
     hiddenTestClient: new HiddenTestFetchClient(client),
+    repositoryClient: new RepositoryFetchClient(client),
+    problemClient: createProblemClient(runtime),
     templateClient: new TemplateFetchClient(client),
     passedClient: new PassedFetchClient(client),
     answerClient: new AnswerFetchClient(client),
@@ -496,4 +576,29 @@ function getActiveRuntime(): ExtensionRuntime {
   }
 
   return activeRuntime;
+}
+
+function createProblemClient(runtime: ExtensionRuntime): ProblemFetchClient {
+  return new ProblemFetchClient({
+    fetchTaskPageHtml: async ({ taskId, homeworkId }) => {
+      const session = await runtime.resolveSession();
+      const taskUrl = new URL(`https://www.educoder.net/tasks/${taskId}`);
+      if (homeworkId) {
+        taskUrl.searchParams.set('homework_common_id', homeworkId);
+      }
+
+      const response = await fetch(taskUrl, {
+        headers: {
+          Cookie: buildEducoderCookieHeader(session),
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+
+      return {
+        url: response.url || taskUrl.toString(),
+        html: await response.text(),
+        contentType: response.headers.get('content-type') ?? undefined,
+      };
+    },
+  });
 }

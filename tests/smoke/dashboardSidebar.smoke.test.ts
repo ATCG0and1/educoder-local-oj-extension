@@ -9,7 +9,7 @@ describe('dashboard sidebar smoke', () => {
     expect(view).toBeDefined();
     expect(view.webview.html).toContain('一键同步本章');
     expect(view.webview.html).toContain('更换存放目录');
-    expect(view.webview.html).toContain('打开当前题目');
+    expect(view.webview.html).toContain('选择/打开题目');
     expect(view.webview.html).toContain('刷新状态');
   });
 });

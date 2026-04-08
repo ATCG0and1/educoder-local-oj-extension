@@ -11,6 +11,7 @@ import {
   type LocalJudgeReport,
 } from './resultStore.js';
 import { classifyCaseVerdict } from './verdict.js';
+import { resolveTaskPackagePaths } from '../workspace/taskPackageMigration.js';
 
 export interface ExecuteBinaryInput {
   executablePath: string;
@@ -34,18 +35,28 @@ export interface RunLocalJudgeInput {
   executeBinary?: (input: ExecuteBinaryInput) => Promise<ExecuteBinaryResult>;
 }
 
+export const HIDDEN_TESTS_REQUIRED_ERROR_MESSAGE =
+  '未找到本地测试，请先打开题目并完成同步后再运行本地评测。';
+
 interface HiddenCaseFile {
   caseId: string;
   inputPath: string;
   outputPath: string;
+  reportInputPath: string;
+  reportOutputPath: string;
 }
 
 export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJudgeReport> {
-  const workspaceDir = path.join(input.taskRoot, 'workspace');
-  const hiddenTestsDir = path.join(input.taskRoot, '_educoder', 'tests', 'hidden');
-  const hiddenCaseFiles = await discoverHiddenCases(hiddenTestsDir);
+  const resolvedPaths = await resolveTaskPackagePaths(input.taskRoot);
+  const workspaceDir = resolvedPaths.currentCodeDir;
+  const workspacePath = normalizeReportPrefix(input.taskRoot, workspaceDir);
+  const discoveredCases = await discoverLocalCases(input.taskRoot, resolvedPaths.hiddenTestsDir);
+  if (!discoveredCases || discoveredCases.caseFiles.length === 0) {
+    throw new Error(HIDDEN_TESTS_REQUIRED_ERROR_MESSAGE);
+  }
+
   const schedule = planCaseRun({
-    allCaseIds: hiddenCaseFiles.map((item) => item.caseId),
+    allCaseIds: discoveredCases.caseFiles.map((item) => item.caseId),
     rerunFailedOnly: input.rerunFailedOnly,
     lastReport: input.lastReport,
   });
@@ -57,6 +68,8 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
 
   if (!compilation.success || !compilation.executablePath) {
     const report: LocalJudgeReport = {
+      source: discoveredCases.source,
+      workspacePath,
       runMode: schedule.runMode,
       reason: schedule.reason,
       compile: compileSummary,
@@ -72,7 +85,7 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
     return report;
   }
 
-  const hiddenCaseMap = new Map(hiddenCaseFiles.map((item) => [item.caseId, item] as const));
+  const hiddenCaseMap = new Map(discoveredCases.caseFiles.map((item) => [item.caseId, item] as const));
   const caseResults: LocalJudgeCaseResult[] = [];
 
   for (const caseId of schedule.caseIds) {
@@ -104,6 +117,8 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
     caseResults.push({
       caseId,
       verdict,
+      inputPath: hiddenCase.reportInputPath,
+      outputPath: hiddenCase.reportOutputPath,
       expected,
       actual: execution.stdout,
       stdout: execution.stdout,
@@ -121,6 +136,8 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
   }
 
   const report: LocalJudgeReport = {
+    source: discoveredCases.source,
+    workspacePath,
     runMode: schedule.runMode,
     reason: schedule.reason,
     compile: compileSummary,
@@ -145,23 +162,56 @@ function toCompileSummary(compilation: CompileWorkspaceResult): CompileResultSum
   };
 }
 
-async function discoverHiddenCases(hiddenTestsDir: string): Promise<HiddenCaseFile[]> {
+async function discoverLocalCases(
+  taskRoot: string,
+  fallbackHiddenTestsDir: string,
+): Promise<{ source: 'tests/all' | 'tests/hidden-legacy'; caseFiles: HiddenCaseFile[] } | undefined> {
+  const canonicalCases = await discoverCaseFiles(path.join(taskRoot, 'tests', 'all'), 'tests/all');
+  if (canonicalCases.length > 0) {
+    return {
+      source: 'tests/all',
+      caseFiles: canonicalCases,
+    };
+  }
+
+  const hiddenCases = await discoverCaseFiles(
+    fallbackHiddenTestsDir,
+    normalizeReportPrefix(taskRoot, fallbackHiddenTestsDir),
+  );
+  if (hiddenCases.length > 0) {
+    return {
+      source: 'tests/hidden-legacy',
+      caseFiles: hiddenCases,
+    };
+  }
+
+  return undefined;
+}
+
+async function discoverCaseFiles(caseDir: string, reportPrefix: string): Promise<HiddenCaseFile[]> {
   try {
-    const entries = await readdir(hiddenTestsDir, { withFileTypes: true });
+    const entries = await readdir(caseDir, { withFileTypes: true });
     const hiddenCases = entries
       .filter((entry) => entry.isFile())
       .map((entry) => entry.name.match(/^(case_\d+)_input\.txt$/))
       .filter((match): match is RegExpMatchArray => match !== null)
       .map((match) => ({
         caseId: match[1],
-        inputPath: path.join(hiddenTestsDir, `${match[1]}_input.txt`),
-        outputPath: path.join(hiddenTestsDir, `${match[1]}_output.txt`),
+        inputPath: path.join(caseDir, `${match[1]}_input.txt`),
+        outputPath: path.join(caseDir, `${match[1]}_output.txt`),
+        reportInputPath: `${reportPrefix}/${match[1]}_input.txt`,
+        reportOutputPath: `${reportPrefix}/${match[1]}_output.txt`,
       }));
 
     return hiddenCases.sort((left, right) => left.caseId.localeCompare(right.caseId));
   } catch {
     return [];
   }
+}
+
+function normalizeReportPrefix(taskRoot: string, targetDir: string): string {
+  const relative = path.relative(taskRoot, targetDir).replaceAll('\\', '/');
+  return relative.length > 0 ? relative : 'tests/hidden-legacy';
 }
 
 function executeBinary(input: ExecuteBinaryInput): Promise<ExecuteBinaryResult> {

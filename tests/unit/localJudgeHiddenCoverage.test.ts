@@ -23,14 +23,14 @@ afterEach(async () => {
 });
 
 describe('local hidden coverage', () => {
-  it('counts all cached hidden datasets in a full local judge run', async () => {
+  it('counts all canonical local test datasets in a full local judge run', async () => {
     const taskRoot = await createTempTaskRoot();
-    await writeTextFile(path.join(taskRoot, 'workspace', 'test1', 'main.cpp'), 'int main() {}\n');
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'test1', 'main.cpp'), 'int main() {}\n');
 
     for (const [index, value] of ['1', '2', '3', '4', '5'].entries()) {
       const caseId = String(index + 1).padStart(3, '0');
-      await writeTextFile(path.join(taskRoot, '_educoder', 'tests', 'hidden', `case_${caseId}_input.txt`), `${value}\n`);
-      await writeTextFile(path.join(taskRoot, '_educoder', 'tests', 'hidden', `case_${caseId}_output.txt`), `${value}\n`);
+      await writeTextFile(path.join(taskRoot, 'tests', 'all', `case_${caseId}_input.txt`), `${value}\n`);
+      await writeTextFile(path.join(taskRoot, 'tests', 'all', `case_${caseId}_output.txt`), `${value}\n`);
     }
 
     const report = await runLocalJudge({
@@ -49,8 +49,37 @@ describe('local hidden coverage', () => {
       })),
     });
 
+    expect(report.source).toBe('tests/all');
+    expect(report.workspacePath).toBe('code/current');
     expect(report.summary.total).toBe(5);
     expect(report.summary.passed + report.summary.failed).toBe(5);
+  });
+
+  it('falls back to legacy hidden tests when tests/all is unavailable', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await writeTextFile(path.join(taskRoot, 'workspace', 'test1', 'main.cpp'), 'int main() {}\n');
+    await writeTextFile(path.join(taskRoot, '_educoder', 'tests', 'hidden', 'case_001_input.txt'), '7\n');
+    await writeTextFile(path.join(taskRoot, '_educoder', 'tests', 'hidden', 'case_001_output.txt'), '7\n');
+
+    const report = await runLocalJudge({
+      taskRoot,
+      compileWorkspace: async ({ workspaceDir }) => ({
+        success: true,
+        executablePath: path.join(workspaceDir, 'app.exe'),
+        stdout: '',
+        stderr: '',
+      }),
+      executeBinary: vi.fn(async ({ input }) => ({
+        stdout: input,
+        stderr: '',
+        exitCode: 0,
+        timedOut: false,
+      })),
+    });
+
+    expect(report.source).toBe('tests/hidden-legacy');
+    expect(report.workspacePath).toBe('workspace');
+    expect(report.summary.total).toBe(1);
   });
 
   it('exposes workspace-only vs local-ready readiness in task state', () => {

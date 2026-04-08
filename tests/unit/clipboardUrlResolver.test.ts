@@ -23,7 +23,7 @@ describe('resolveCollectionUrlFromClipboard', () => {
     };
 
     await expect(resolveCollectionUrlFromClipboard(vscodeEnv)).rejects.toThrow(
-      '请先在 Edge 复制头歌 shixun_homework 页面链接',
+      '请复制或粘贴头歌 shixun_homework 页面链接（https://www.educoder.net/classrooms/.../shixun_homework/...）',
     );
   });
 
@@ -37,7 +37,7 @@ describe('resolveCollectionUrlFromClipboard', () => {
     };
 
     await expect(resolveCollectionUrlFromClipboard(vscodeEnv)).rejects.toThrow(
-      '请先在 Edge 复制头歌 shixun_homework 页面链接',
+      '请复制或粘贴头歌 shixun_homework 页面链接（https://www.educoder.net/classrooms/.../shixun_homework/...）',
     );
   });
 });

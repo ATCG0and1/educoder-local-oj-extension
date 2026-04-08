@@ -3,7 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openTaskCommand } from '../../src/commands/openTask.js';
-import { syncCurrentCollection } from '../../src/commands/syncCurrentCollection.js';
+import { syncCollectionPackages } from '../../src/commands/syncCollectionPackages.js';
+import { syncTaskPackageCommand } from '../../src/commands/syncTaskPackage.js';
 
 const tempDirs: string[] = [];
 
@@ -17,10 +18,14 @@ afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
+function acceptPrefilledUrl(options?: { value?: string }): string | undefined {
+  return options?.value;
+}
+
 describe('cross chapter e2e', () => {
-  it('proves the workflow is not hardcoded to chapter two names or ids', async () => {
+  it('proves bulk full-package sync is not hardcoded to chapter two names or ids', async () => {
     const rootDir = await createTempRoot();
-    const syncResult = await syncCurrentCollection({
+    const syncResult = await syncCollectionPackages({
       context: {
         globalState: {
           get: () => undefined,
@@ -37,7 +42,7 @@ describe('cross chapter e2e', () => {
         },
       },
       input: {
-        showInputBox: async () => undefined,
+        showInputBox: async (options) => acceptPrefilledUrl(options),
       },
       client: {
         getCollectionIndex: async () => ({
@@ -56,29 +61,59 @@ describe('cross chapter e2e', () => {
           ],
         }),
       },
+      syncTaskPackage: async (taskRoot) =>
+        syncTaskPackageCommand(taskRoot, {
+          taskDetailClient: {
+            getTaskDetail: async () => ({
+              taskId: 'intro-task',
+              homeworkId: '3727447',
+              taskName: '第1关 绪论任务',
+              problemMaterial: {
+                title: '第1关 绪论任务',
+                statementMarkdown: '## 题目描述\n输出 hello。',
+                statementHtml: '<p>输出 hello。</p>',
+                samples: [{ name: '样例 1', input: 'hello\n', output: 'hello\n' }],
+                raw: {},
+              },
+              editablePaths: ['main.cpp'],
+              testSets: [{ is_public: false, input: 'hello\n', output: 'hello\n' }],
+              raw: {},
+            }),
+          },
+          sourceClient: {
+            fetchSourceFiles: async () => [{ path: 'main.cpp', content: 'int main() { return 0; }\n' }],
+          },
+          hiddenTestClient: {
+            fetchHiddenTests: async () => [{ input: 'hello\n', output: 'hello\n' }],
+          },
+          templateClient: {
+            fetchTemplateFiles: async () => [{ path: 'main.cpp', content: '#include <iostream>\n' }],
+          },
+          passedClient: {
+            fetchPassedFiles: async () => [{ path: 'main.cpp', content: 'accepted\n' }],
+          },
+          answerClient: {
+            fetchAnswerInfo: async () => ({
+              status: 3,
+              entries: [{ answerId: 123, name: '思路', content: '```cpp\nint main() {}\n```' }],
+            }),
+            unlockAnswer: async () => ({
+              answerId: 123,
+              content: '```cpp\nint main() {}\n```',
+              unlocked: true,
+            }),
+          },
+        }),
     });
 
     expect(syncResult.collectionRoot).toContain('第一章 绪论 [1316859]');
     expect(syncResult.firstTask?.taskRoot).toContain('1-1 基本实训：顺序表计数 [3727447]');
+    expect(syncResult.syncedTasks).toHaveLength(1);
+    await import('node:fs/promises').then(({ access }) =>
+      expect(access(path.join(syncResult.firstTask!.taskRoot, 'problem', 'statement.md'))).resolves.toBeUndefined(),
+    );
 
-    const model = await openTaskCommand(syncResult.firstTask!.taskRoot, {
-      taskDetailClient: {
-        getTaskDetail: async () => ({
-          taskId: 'intro-task',
-          homeworkId: '3727447',
-          taskName: '第1关 绪论任务',
-          editablePaths: ['main.cpp'],
-          testSets: [{ is_public: false, input: 'hello\n', output: 'hello\n' }],
-          raw: {},
-        }),
-      },
-      sourceClient: {
-        fetchSourceFiles: async () => [{ path: 'main.cpp', content: 'int main() { return 0; }\n' }],
-      },
-      hiddenTestClient: {
-        fetchHiddenTests: async () => [{ input: 'hello\n', output: 'hello\n' }],
-      },
-    });
+    const model = await openTaskCommand(syncResult.firstTask!.taskRoot);
 
     expect(model).toMatchObject({
       taskId: 'intro-task',

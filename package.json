@@ -22,6 +22,10 @@
     "onCommand:educoderLocalOj.openTask",
     "onCommand:educoderLocalOj.openTaskStatement",
     "onCommand:educoderLocalOj.openCurrentCode",
+    "onCommand:educoderLocalOj.openTaskTests",
+    "onCommand:educoderLocalOj.openTaskAnswers",
+    "onCommand:educoderLocalOj.openLatestFailureInput",
+    "onCommand:educoderLocalOj.openLatestFailureOutput",
     "onCommand:educoderLocalOj.runLocalJudge",
     "onCommand:educoderLocalOj.submitTask",
     "onCommand:educoderLocalOj.rerunFailedCases",
@@ -45,7 +49,7 @@
   "main": "./dist/src/extension.js",
   "repository": {
     "type": "git",
-    "url": "https://example.com/young/educoder-local-oj-extension.git"
+    "url": "https://github.com/zyylovelyyso/educoder-local-oj-extension.git"
   },
   "contributes": {
     "viewsContainers": {
@@ -75,9 +79,13 @@
       { "command": "educoderLocalOj.enableEdgeReuse", "title": "Educoder Local OJ: 启用 Edge 复用（调试）" },
       { "command": "educoderLocalOj.selectRootFolder", "title": "Educoder Local OJ: 更换存放目录" },
       { "command": "educoderLocalOj.syncCollectionPackages", "title": "Educoder Local OJ: 一键同步本章" },
-      { "command": "educoderLocalOj.openTask", "title": "Educoder Local OJ: 打开当前题目" },
+      { "command": "educoderLocalOj.openTask", "title": "Educoder Local OJ: 选择/打开题目" },
       { "command": "educoderLocalOj.openTaskStatement", "title": "Educoder Local OJ: 打开题面文件" },
       { "command": "educoderLocalOj.openCurrentCode", "title": "Educoder Local OJ: 打开当前代码文件" },
+      { "command": "educoderLocalOj.openTaskTests", "title": "Educoder Local OJ: 打开测试集" },
+      { "command": "educoderLocalOj.openTaskAnswers", "title": "Educoder Local OJ: 打开答案" },
+      { "command": "educoderLocalOj.openLatestFailureInput", "title": "Educoder Local OJ: 打开失败输入" },
+      { "command": "educoderLocalOj.openLatestFailureOutput", "title": "Educoder Local OJ: 打开失败输出" },
       { "command": "educoderLocalOj.runLocalJudge", "title": "Educoder Local OJ: 运行本地测试" },
       { "command": "educoderLocalOj.submitTask", "title": "Educoder Local OJ: 提交评测（本地 + 头哥）" },
       { "command": "educoderLocalOj.rerunFailedCases", "title": "Educoder Local OJ: 重跑失败用例" },
@@ -109,28 +117,6 @@
           "command": "educoderLocalOj.clearTaskTreeFilter",
           "when": "view == educoderLocalOj.taskTree",
           "group": "navigation@2"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "educoderLocalOj.syncTaskAnswersFromTree",
-          "when": "view == educoderLocalOj.taskTree && viewItem == task",
-          "group": "inline@1"
-        },
-        {
-          "command": "educoderLocalOj.syncTaskRepositoryFromTree",
-          "when": "view == educoderLocalOj.taskTree && viewItem == task",
-          "group": "inline@2"
-        },
-        {
-          "command": "educoderLocalOj.compareWithTemplateFromTree",
-          "when": "view == educoderLocalOj.taskTree && viewItem == task",
-          "group": "navigation@3"
-        },
-        {
-          "command": "educoderLocalOj.compareWithAnswerFromTree",
-          "when": "view == educoderLocalOj.taskTree && viewItem == task",
-          "group": "navigation@4"
         }
       ]
     }

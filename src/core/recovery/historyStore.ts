@@ -5,6 +5,7 @@ import type {
   HistoryRedoLog,
   HistorySnapshot,
 } from '../api/historyFetchClient.js';
+import { assertSafeWorkspaceFilePaths, writeWorkspaceFiles } from '../workspace/workspaceInit.js';
 
 export interface HistoryIndex {
   filePath?: string;
@@ -54,12 +55,12 @@ export async function writeHistorySnapshot(taskRoot: string, snapshot: HistorySn
     'history',
     `query_${String(snapshot.queryIndex).padStart(3, '0')}`,
   );
-  const targetPath = path.join(snapshotRoot, snapshot.filePath);
   const metadataPath = path.join(snapshotRoot, 'snapshot.json');
 
-  await mkdir(path.dirname(targetPath), { recursive: true });
+  assertSafeWorkspaceFilePaths(snapshotRoot, [{ path: snapshot.filePath, content: snapshot.content }]);
+  await mkdir(snapshotRoot, { recursive: true });
   await Promise.all([
-    writeFile(targetPath, snapshot.content, 'utf8'),
+    writeWorkspaceFiles(snapshotRoot, [{ path: snapshot.filePath, content: snapshot.content }]),
     writeJson(metadataPath, snapshot),
   ]);
 

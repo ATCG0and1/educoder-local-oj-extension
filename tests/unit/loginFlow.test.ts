@@ -3,6 +3,7 @@ import {
   LOGIN_CONFIRM_LABEL,
   LOGIN_PROMPT_MESSAGE,
   promptEducoderLogin,
+  resolveEdgeExecutablePath,
 } from '../../src/core/auth/loginFlow.js';
 import type { SessionCookies } from '../../src/core/auth/sessionManager.js';
 
@@ -60,5 +61,23 @@ describe('promptEducoderLogin', () => {
 
     expect(extractSession).not.toHaveBeenCalled();
     expect(browser.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips missing Edge candidates and returns the first existing executable path', async () => {
+    const fileExists = vi
+      .fn<(targetPath: string) => Promise<boolean>>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const result = await resolveEdgeExecutablePath({
+      env: {
+        'ProgramFiles(x86)': 'C:\\MissingPF86',
+        ProgramFiles: 'C:\\RealPF',
+        LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local',
+      },
+      fileExists,
+    });
+
+    expect(result).toBe('C:\\RealPF\\Microsoft\\Edge\\Application\\msedge.exe');
   });
 });

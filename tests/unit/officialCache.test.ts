@@ -50,7 +50,7 @@ describe('officialCache', () => {
         verdict: 'passed',
         score: 100,
         message: 'Accepted',
-        rawLogPath: '_educoder/logs/remote/2026-04-01T00-00-00.000Z.json',
+        rawLogPath: '_educoder/judge/remote_runs/2026-04-01T00-00-00.000Z.json',
       },
       cachedAt: '2026-04-01T00:00:00.000Z',
     };

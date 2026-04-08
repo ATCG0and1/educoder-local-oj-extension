@@ -1,6 +1,13 @@
 .git/**
 .worktrees/**
 tests/**
+docs/**
+.github/**
+.vscode/**
+.gitignore
+agent.md
+实验复盘.md
+*.vsix
 src/**/*.ts
 !src/webview/**/*.html
 !src/webview/**/*.css

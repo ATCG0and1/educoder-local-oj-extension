@@ -27,6 +27,20 @@ export interface CollectionManifest {
   homeworks: HomeworkManifest[];
 }
 
+export function stripStableIdSuffix(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized.replace(/\s*\[[^\]]+\]\s*$/u, '').trim();
+}
+
+export function toDisplayName(value: string | undefined, fallback: string): string {
+  const cleaned = stripStableIdSuffix(value);
+  return cleaned && cleaned.length > 0 ? cleaned : fallback;
+}
+
 export async function loadCollectionManifest(rootDir: string): Promise<CollectionManifest | undefined> {
   const manifestPath = path.join(rootDir, 'collection.manifest.json');
 
@@ -57,7 +71,7 @@ export function mergeCollectionManifests(
   for (const homework of incoming.homeworks) {
     const mergedHomework = byHomeworkId.get(homework.homeworkId) ?? {
       homeworkId: homework.homeworkId,
-      name: homework.name,
+      name: toDisplayName(homework.name, homework.homeworkId),
       folderName: formatStableFolderName(homework.name, homework.homeworkId, {
         fallbackName: '作业',
       }),
@@ -67,7 +81,7 @@ export function mergeCollectionManifests(
       tasks: [],
     };
 
-    mergedHomework.name = homework.name;
+    mergedHomework.name = toDisplayName(homework.name, homework.homeworkId);
     mergedHomework.folderName = formatStableFolderName(homework.name, homework.homeworkId, {
       fallbackName: '作业',
     });
@@ -81,12 +95,12 @@ export function mergeCollectionManifests(
 
   return {
     courseId: incoming.courseId,
-    courseName: incoming.courseName,
+    courseName: stripStableIdSuffix(incoming.courseName),
     courseFolderName: formatStableFolderName(incoming.courseName, incoming.courseId, {
       fallbackName: '课程',
     }),
     categoryId: incoming.categoryId,
-    categoryName: incoming.categoryName,
+    categoryName: toDisplayName(incoming.categoryName, incoming.categoryId),
     categoryFolderName: formatStableFolderName(incoming.categoryName, incoming.categoryId, {
       fallbackName: '章节',
     }),
@@ -120,7 +134,7 @@ function mergeTasks(existing: TaskManifest[], incoming: CollectionTaskIndex[]): 
   for (const task of incoming) {
     byTaskId.set(task.taskId, {
       taskId: task.taskId,
-      name: task.name,
+      name: toDisplayName(task.name, task.taskId),
       position: task.position,
       folderName: formatStableFolderName(task.name, task.taskId, {
         index: task.position,

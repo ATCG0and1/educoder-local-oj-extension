@@ -32,18 +32,22 @@ export interface WorkspaceBindingResult {
   folderName: string;
 }
 
-export async function bindProductRootToWorkspace(
-  productRoot: string,
+export async function bindWorkspaceRootToWorkspace(
+  workspaceRoot: string,
   deps: WorkspaceBindingDeps = {},
 ): Promise<WorkspaceBindingResult> {
-  const workspace = deps.workspace ?? vscode.workspace;
-  const uriFile = deps.uriFile ?? vscode.Uri.file;
+  const workspace =
+    deps.workspace ??
+    (vscode.workspace as unknown as NonNullable<WorkspaceBindingDeps['workspace']>);
+  const uriFile =
+    deps.uriFile ??
+    ((fsPath: string) => vscode.Uri.file(fsPath) as unknown as WorkspaceFolderLike['uri']);
   const existingFolders = workspace.workspaceFolders ?? [];
-  const normalizedProductRoot = normalizeFsPath(productRoot);
-  const folderName = path.basename(productRoot);
+  const normalizedWorkspaceRoot = normalizeFsPath(workspaceRoot);
+  const folderName = path.basename(workspaceRoot);
 
   if (
-    existingFolders.some((folder) => normalizeFsPath(folder.uri.fsPath) === normalizedProductRoot)
+    existingFolders.some((folder) => normalizeFsPath(folder.uri.fsPath) === normalizedWorkspaceRoot)
   ) {
     return {
       added: false,
@@ -54,7 +58,7 @@ export async function bindProductRootToWorkspace(
 
   const added = workspace.updateWorkspaceFolders(existingFolders.length, 0, {
     name: folderName,
-    uri: uriFile(productRoot),
+    uri: uriFile(workspaceRoot),
   });
 
   return {
@@ -64,12 +68,21 @@ export async function bindProductRootToWorkspace(
   };
 }
 
+export async function bindProductRootToWorkspace(
+  productRoot: string,
+  deps: WorkspaceBindingDeps = {},
+): Promise<WorkspaceBindingResult> {
+  return bindWorkspaceRootToWorkspace(productRoot, deps);
+}
+
 export async function revealInExplorer(
   targetPath: string,
   deps: ExplorerRevealDeps = {},
 ): Promise<void> {
   const executeCommand = deps.executeCommand ?? vscode.commands.executeCommand;
-  const uriFile = deps.uriFile ?? vscode.Uri.file;
+  const uriFile =
+    deps.uriFile ??
+    ((fsPath: string) => vscode.Uri.file(fsPath) as unknown as { fsPath: string; scheme?: string });
 
   await executeCommand('revealInExplorer', uriFile(targetPath));
 }

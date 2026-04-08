@@ -9,6 +9,7 @@ const showInputBox = vi.fn(async (options?: { value?: string }) => options?.valu
 const showQuickPick = vi.fn(async () => undefined);
 const showErrorMessage = vi.fn(async () => undefined);
 const showInformationMessage = vi.fn(async () => undefined);
+const saveAll = vi.fn(async () => true);
 const openTextDocument = vi.fn(async (target: { fsPath?: string } | string) => ({
   uri: typeof target === 'string' ? { fsPath: target, scheme: 'file' } : target,
   fileName: typeof target === 'string' ? target : target.fsPath,
@@ -98,6 +99,15 @@ const createOutputChannel = vi.fn((name: string) => {
   return channel;
 });
 
+const executeCommand = vi.fn(async (command: string, ...args: unknown[]) => {
+  const handler = registeredCommands.get(command);
+  if (!handler) {
+    return undefined;
+  }
+
+  return handler(...args);
+});
+
 class EventEmitter<T> {
   private listeners: Array<(value: T | undefined) => void> = [];
 
@@ -162,6 +172,8 @@ function resetMockState(): void {
   showErrorMessage.mockResolvedValue(undefined);
   showInformationMessage.mockReset();
   showInformationMessage.mockResolvedValue(undefined);
+  saveAll.mockReset();
+  saveAll.mockResolvedValue(true);
   openTextDocument.mockReset();
   openTextDocument.mockImplementation(async (target: { fsPath?: string } | string) => ({
     uri: typeof target === 'string' ? { fsPath: target, scheme: 'file' } : target,
@@ -189,6 +201,7 @@ function resetMockState(): void {
   registerWebviewViewProvider.mockClear();
   registerTreeDataProvider.mockClear();
   createOutputChannel.mockClear();
+  executeCommand.mockClear();
   createdPanels.splice(0, createdPanels.length);
   createdOutputChannels.splice(0, createdOutputChannels.length);
   createdViews.splice(0, createdViews.length);
@@ -231,14 +244,7 @@ vi.mock('vscode', () => ({
       };
     },
     getCommands: async (_filterInternal?: boolean) => [...registeredCommands.keys()],
-    executeCommand: async (command: string, ...args: unknown[]) => {
-      const handler = registeredCommands.get(command);
-      if (!handler) {
-        return undefined;
-      }
-
-      return handler(...args);
-    },
+    executeCommand,
   },
   env: {
     clipboard: {
@@ -262,6 +268,7 @@ vi.mock('vscode', () => ({
     get workspaceFolders() {
       return workspaceFolders.length > 0 ? workspaceFolders : undefined;
     },
+    saveAll,
     openTextDocument,
     updateWorkspaceFolders,
   },
@@ -291,6 +298,7 @@ vi.mock('vscode', () => ({
     showQuickPick,
     showErrorMessage,
     showInformationMessage,
+    saveAll,
     openTextDocument,
     showTextDocument,
     updateWorkspaceFolders,
@@ -300,6 +308,7 @@ vi.mock('vscode', () => ({
     createOutputChannel,
     registerWebviewViewProvider,
     registerTreeDataProvider,
+    executeCommand,
     registeredViewProviders,
     registeredTreeProviders,
     createdPanels,

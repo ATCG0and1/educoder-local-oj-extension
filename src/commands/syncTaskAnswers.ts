@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AnswerFetchClientLike, AnswerInfoSummary } from '../core/api/answerFetchClient.js';
 import {
@@ -7,6 +7,7 @@ import {
   type RecoveryMetadata,
 } from '../core/recovery/materialStore.js';
 import type { TaskManifest } from '../core/sync/manifestStore.js';
+import { getCanonicalAnswerInfoPath, getInternalAnswersDir } from '../core/workspace/answerSurface.js';
 
 export interface SyncTaskAnswersDeps {
   answerClient: AnswerFetchClientLike;
@@ -41,62 +42,24 @@ export async function syncTaskAnswers(taskRoot: string, deps: SyncTaskAnswersDep
 
 async function writeAnswerArtifacts(
   taskRoot: string,
-  taskManifest: TaskManifest,
+  _taskManifest: TaskManifest,
   answerInfo: AnswerInfoSummary,
   unlockedAnswers: Array<{ answerId: number; content: string; unlocked: boolean }>,
-  syncedAt: string,
+  _syncedAt: string,
 ): Promise<void> {
-  const answerDir = path.join(taskRoot, '_educoder', 'answer');
-  const unlockedDir = path.join(answerDir, 'unlocked');
+  const answerDir = path.join(taskRoot, 'answers');
+  const internalAnswersDir = getInternalAnswersDir(taskRoot);
+  const answerInfoPath = getCanonicalAnswerInfoPath(taskRoot);
 
+  await rm(answerDir, { recursive: true, force: true });
   await mkdir(answerDir, { recursive: true });
-  await mkdir(unlockedDir, { recursive: true });
-  await writeFile(path.join(answerDir, 'answer_info.json'), JSON.stringify(answerInfo, null, 2), 'utf8');
+  await mkdir(internalAnswersDir, { recursive: true });
+  await writeFile(answerInfoPath, JSON.stringify(answerInfo, null, 2), 'utf8');
   await Promise.all(
     unlockedAnswers
       .filter((entry) => entry.unlocked)
-      .map((entry) => writeFile(path.join(unlockedDir, `answer-${entry.answerId}.md`), entry.content, 'utf8')),
+      .map((entry) => writeFile(path.join(answerDir, `answer-${entry.answerId}.md`), entry.content, 'utf8')),
   );
-  await writeFile(
-    path.join(answerDir, 'index.md'),
-    renderAnswerIndex(taskManifest, answerInfo, unlockedAnswers, syncedAt),
-    'utf8',
-  );
-}
-
-function renderAnswerIndex(
-  taskManifest: TaskManifest,
-  answerInfo: AnswerInfoSummary,
-  unlockedAnswers: Array<{ answerId: number; content: string; unlocked: boolean }>,
-  syncedAt: string,
-): string {
-  const unlockedById = new Map(unlockedAnswers.map((entry) => [entry.answerId, entry]));
-  const rows = answerInfo.entries.map((entry) => {
-    const unlocked = entry.answerId != null ? unlockedById.get(entry.answerId)?.unlocked === true : false;
-    const filePath = entry.answerId != null && unlocked ? `unlocked/answer-${entry.answerId}.md` : '未解锁';
-    return `| ${entry.answerId ?? '-'} | ${entry.name} | ${entry.score ?? '-'} | ${entry.ratio ?? '-'} | ${unlocked ? '已解锁' : '未解锁'} | ${filePath} |`;
-  });
-
-  return [
-    '# 答案学习索引',
-    '',
-    `- 任务：${taskManifest.name}`,
-    `- Task ID：${taskManifest.taskId}`,
-    `- 同步时间：${syncedAt}`,
-    '',
-    '## 答案列表',
-    '',
-    '| Answer ID | 名称 | Score | Ratio | 状态 | 本地文件 |',
-    '| --- | --- | --- | --- | --- | --- |',
-    ...(rows.length > 0 ? rows : ['| - | 暂无答案 | - | - | - | - |']),
-    '',
-    '## 学习入口',
-    '',
-    '- 答案元信息：`answer_info.json`',
-    '- 已解锁答案目录：`unlocked/`',
-    '- 当前代码目录：`../../workspace/`',
-    '- 模板目录：`../template/`',
-  ].join('\n');
 }
 
 function emptyRecoveryMetadata(): RecoveryMetadata {

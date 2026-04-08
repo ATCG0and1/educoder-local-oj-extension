@@ -57,6 +57,94 @@ describe('TaskDetailClient', () => {
     });
   });
 
+  it('normalizes embedded statement markdown/html/sample metadata when task detail already carries problem content', async () => {
+    const client = new TaskDetailClient({
+      get: async <T>() =>
+        ({
+          challenge: {
+            subject: '基本实训：链表操作',
+            description: '<p>给定两个整数，输出它们的和。</p>',
+            description_md: '## 题目描述\n给定两个整数，输出它们的和。',
+            samples: [{ input: '1 2\n', output: '3\n', name: '样例 1' }],
+            exec_time: 1000,
+            memory_limit: 128,
+          },
+          test_sets: [{ is_public: true, input: '1 2\n', output: '3\n' }],
+        }) as T,
+    });
+
+    await expect(
+      client.getTaskDetail({
+        taskId: 'fc7pz3fm6yjh',
+      }),
+    ).resolves.toMatchObject({
+      taskName: '基本实训：链表操作',
+      problemMaterial: {
+        title: '基本实训：链表操作',
+        statementMarkdown: '## 题目描述\n给定两个整数，输出它们的和。',
+        statementHtml: '<p>给定两个整数，输出它们的和。</p>',
+        samples: [{ name: '样例 1', input: '1 2\n', output: '3\n' }],
+        limits: {
+          exec_time: 1000,
+          memory_limit: 128,
+        },
+      },
+    });
+  });
+
+  it('normalizes relative statement asset urls from task detail payloads using the task page url', async () => {
+    const client = new TaskDetailClient({
+      get: async <T>() =>
+        ({
+          challenge: {
+            subject: '基本实训：链表操作',
+            description: '<p><img src="../uploads/problem.png"></p>',
+            description_md: '![示意图](../uploads/problem.png)',
+          },
+          test_sets: [{ is_public: true, input: '1 2\n', output: '3\n' }],
+        }) as T,
+    });
+
+    await expect(
+      client.getTaskDetail({
+        taskId: 'fc7pz3fm6yjh',
+        homeworkId: '3727439',
+      }),
+    ).resolves.toMatchObject({
+      problemMaterial: {
+        statementMarkdown: '![示意图](https://www.educoder.net/uploads/problem.png)',
+        statementHtml: '<p><img src="https://www.educoder.net/uploads/problem.png"></p>',
+        pageSnapshotUrl: 'https://www.educoder.net/tasks/fc7pz3fm6yjh?homework_common_id=3727439',
+      },
+    });
+  });
+
+  it('treats challenge.task_pass as the real statement markdown when detail json uses that field', async () => {
+    const client = new TaskDetailClient({
+      get: async <T>() =>
+        ({
+          challenge: {
+            subject: '一元多项式的加法',
+            task_pass: '## 题目任务\\n给定两个一元多项式，计算它们的和。',
+          },
+          test_sets: [{ is_public: true, input: '1 2\\n', output: '3\\n' }],
+        }) as T,
+    });
+
+    await expect(
+      client.getTaskDetail({
+        taskId: 'lzpgkhefi93w',
+      }),
+    ).resolves.toMatchObject({
+      taskName: '一元多项式的加法',
+      problemMaterial: {
+        title: '一元多项式的加法',
+        statementMarkdown: '## 题目任务\\n给定两个一元多项式，计算它们的和。',
+        samples: [{ name: '样例 1', input: '1 2\\n', output: '3\\n' }],
+      },
+    });
+  });
+
   it('splits Chinese semicolon separated path lists into editable file paths', () => {
     expect(parseEditablePaths('test1/tasks.h；test1/main.cpp\nnotes.md')).toEqual([
       'test1/tasks.h',

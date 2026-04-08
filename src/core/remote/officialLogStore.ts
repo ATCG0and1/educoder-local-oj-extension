@@ -6,6 +6,8 @@ export type OfficialJudgeVerdict = 'passed' | 'failed';
 export interface OfficialJudgeSummary {
   verdict: OfficialJudgeVerdict;
   score: number;
+  passedCount?: number;
+  totalCount?: number;
   message?: string;
   rawLogPath: string;
 }
@@ -28,8 +30,8 @@ export interface PersistOfficialJudgeInput {
 export async function writeOfficialJudgeArtifacts(
   input: PersistOfficialJudgeInput,
 ): Promise<OfficialJudgeReport> {
-  const reportsDir = path.join(input.taskRoot, 'reports');
-  const remoteLogDir = path.join(input.taskRoot, '_educoder', 'logs', 'remote');
+  const reportsDir = path.join(input.taskRoot, '_educoder', 'judge');
+  const remoteLogDir = path.join(reportsDir, 'remote_runs');
   const timestamp = new Date().toISOString().replaceAll(':', '-');
   const rawLogPath = path.join(remoteLogDir, `${timestamp}.json`);
 
@@ -58,11 +60,22 @@ export async function writeOfficialJudgeArtifacts(
 export async function readLatestOfficialJudgeReport(
   taskRoot: string,
 ): Promise<OfficialJudgeReport | undefined> {
+  const candidatePaths = [
+    path.join(taskRoot, '_educoder', 'judge', 'latest_remote.json'),
+    path.join(taskRoot, 'reports', 'latest_remote.json'),
+  ];
+
   try {
-    return JSON.parse(
-      await readFile(path.join(taskRoot, 'reports', 'latest_remote.json'), 'utf8'),
-    ) as OfficialJudgeReport;
+    for (const candidatePath of candidatePaths) {
+      try {
+        return JSON.parse(await readFile(candidatePath, 'utf8')) as OfficialJudgeReport;
+      } catch {
+        continue;
+      }
+    }
   } catch {
-    return undefined;
+    // no-op: fall through to undefined
   }
+
+  return undefined;
 }

@@ -1,6 +1,7 @@
 import { parseEducoderCollectionUrl, type EducoderCollectionUrl } from './educoderUrl.js';
 
-export const CLIPBOARD_URL_ERROR_MESSAGE = '请先在 Edge 复制头歌 shixun_homework 页面链接';
+export const CLIPBOARD_URL_ERROR_MESSAGE =
+  '请复制或粘贴头歌 shixun_homework 页面链接（https://www.educoder.net/classrooms/.../shixun_homework/...）';
 
 export interface ClipboardEnv {
   clipboard: {

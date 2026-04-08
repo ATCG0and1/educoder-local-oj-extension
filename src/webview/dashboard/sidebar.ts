@@ -216,7 +216,7 @@ function renderSidebarHtml(model: {
         <div class="action-row">
           <button class="action-button primary" data-educoder-command="educoderLocalOj.syncCollectionPackages">一键同步本章</button>
           <button class="action-button" data-educoder-command="educoderLocalOj.selectRootFolder">更换存放目录</button>
-          <button class="action-button" data-educoder-command="educoderLocalOj.openTask">打开当前题目</button>
+          <button class="action-button" data-educoder-command="educoderLocalOj.openTask">选择/打开题目</button>
           <button class="action-button" data-educoder-refresh="true">刷新状态</button>
         </div>
         <div class="tips">
@@ -257,7 +257,7 @@ function renderEmptyTaskHint(): string {
     <section class="card">
       <h2>当前未打开题目</h2>
       <p class="muted">
-        先粘贴章节链接，再点击“一键同步本章”；同步完成后会自动定位首题，你也可以随时点“打开当前题目”回到做题状态。
+        先粘贴章节链接，再点击“一键同步本章”；同步完成后会自动定位首题，你也可以随时点“选择/打开题目”切回当前做题上下文。
       </p>
     </section>
   `;

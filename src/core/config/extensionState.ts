@@ -1,6 +1,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT_FOLDER_URI_KEY = 'rootFolderUri';
+export const LAST_OPENED_TASK_ROOT_KEY = 'lastOpenedTaskRoot';
 
 export interface ExtensionStateStore {
   get<T>(key: string): T | undefined;
@@ -13,6 +14,12 @@ export interface ExtensionContextLike {
 
 export function getStoredRootFolderUri(context: ExtensionContextLike): string | undefined {
   return context.globalState.get<string>(ROOT_FOLDER_URI_KEY);
+}
+
+export function getStoredLastOpenedTaskRoot(
+  context: ExtensionContextLike,
+): string | undefined {
+  return context.globalState.get<string>(LAST_OPENED_TASK_ROOT_KEY);
 }
 
 export function getStoredRootFolderPath(context: ExtensionContextLike): string | undefined {
@@ -33,4 +40,11 @@ export async function setStoredRootFolderUri(
   rootFolderUri: string,
 ): Promise<void> {
   await context.globalState.update(ROOT_FOLDER_URI_KEY, rootFolderUri);
+}
+
+export async function setStoredLastOpenedTaskRoot(
+  context: ExtensionContextLike,
+  taskRoot: string,
+): Promise<void> {
+  await context.globalState.update(LAST_OPENED_TASK_ROOT_KEY, taskRoot);
 }

@@ -36,6 +36,15 @@ describe('real command service graph', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
+        if (url.includes('www.educoder.net/classrooms/ufr7sxlc/shixun_homework/1316861')) {
+          return new Response('<html><body>classroom snapshot</body></html>', {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+            },
+          });
+        }
+
         const payload = url.includes('/api/shixuns/a9k8ufmh/challenges.json')
           ? [
               {
@@ -93,6 +102,30 @@ describe('real command service graph', () => {
           '课程 [ufr7sxlc]',
           '第二章 线性表及应用 [1316861]',
           'collection.manifest.json',
+        ),
+      ),
+    ).resolves.toBeUndefined();
+
+    await expect(
+      access(
+        path.join(
+          rootDir,
+          'Educoder Local OJ',
+          '课程 [ufr7sxlc]',
+          '第二章 线性表及应用 [1316861]',
+          'collection.page.html',
+        ),
+      ),
+    ).resolves.toBeUndefined();
+
+    await expect(
+      access(
+        path.join(
+          rootDir,
+          'Educoder Local OJ',
+          '课程 [ufr7sxlc]',
+          '第二章 线性表及应用 [1316861]',
+          'collection.page.meta.json',
         ),
       ),
     ).resolves.toBeUndefined();

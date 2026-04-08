@@ -1,8 +1,8 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { RepositoryNode } from '../api/repositoryFetchClient.js';
 import type { WorkspaceFile } from '../workspace/workspaceInit.js';
-import { writeWorkspaceFiles } from '../workspace/workspaceInit.js';
+import { assertSafeWorkspaceFilePaths, writeWorkspaceFiles } from '../workspace/workspaceInit.js';
 
 export interface RepositoryMetadata {
   ready: boolean;
@@ -27,6 +27,10 @@ export async function writeRepositorySnapshot(
     fileCount: input.files.length,
     updatedAt: input.updatedAt ?? new Date().toISOString(),
   };
+
+  assertSafeWorkspaceFilePaths(repositoryRemoteDir, input.files);
+
+  await rm(repositoryRemoteDir, { recursive: true, force: true });
 
   await Promise.all([
     mkdir(repositoryDir, { recursive: true }),

@@ -67,7 +67,7 @@ export function buildRecoveryMetadata(input: BuildRecoveryMetadataInput): Recove
     templateFileCount,
     passedReady: passedFileCount > 0,
     passedFileCount,
-    answerReady: answerEntryCount > 0,
+    answerReady: answerEntryCount > 0 || unlockedAnswerCount > 0,
     answerEntryCount,
     unlockedAnswerCount,
     historyReady: historyFileCount > 0,

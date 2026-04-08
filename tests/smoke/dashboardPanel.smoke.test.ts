@@ -31,8 +31,10 @@ afterEach(async () => {
 });
 
 describe('dashboard panel smoke', () => {
-  it('opens a dashboard panel that shows task-package readiness, solve state, and advanced tools', async () => {
+  it('keeps task opening editor-first and does not open a duplicate dashboard panel', async () => {
     const taskRoot = await createTempTaskRoot();
+    const statementPath = path.join(taskRoot, 'problem', 'statement.md');
+    const currentCodePath = path.join(taskRoot, 'code', 'current', 'test1', 'test1.cpp');
     const vscodeMock = (vscode as any).__mock;
     const revealInExplorer = vi.fn(async () => {
       throw new Error('explorer unavailable');
@@ -71,6 +73,13 @@ describe('dashboard panel smoke', () => {
           taskId: 'fc7pz3fm6yjh',
           homeworkId: '3727439',
           taskName: '第1关 基本实训：链表操作',
+          problemMaterial: {
+            title: '第1关 基本实训：链表操作',
+            statementMarkdown: '# 题面\n给定两个整数，输出它们的和。\n',
+            statementHtml: '<p>给定两个整数，输出它们的和。</p>',
+            samples: [{ name: '样例 1', input: '1 2\n', output: '3\n' }],
+            raw: {},
+          },
           editablePaths: ['test1/test1.cpp'],
           testSets: [{ is_public: false, input: '1 2\n', output: '3\n' }],
           raw: {},
@@ -102,18 +111,15 @@ describe('dashboard panel smoke', () => {
       revealInExplorer,
     } as any);
 
-    const panel = vscodeMock.createdPanels.at(-1);
-    expect(panel.title).toContain('题目工作台');
-    expect(revealInExplorer).toHaveBeenCalledWith(taskRoot);
-    expect(panel.webview.html).toContain('资料完整度');
-    expect(panel.webview.html).toContain('题面');
-    expect(panel.webview.html).toContain('模板');
-    expect(panel.webview.html).toContain('答案与解析');
-    expect(panel.webview.html).toContain('已解锁答案');
-    expect(panel.webview.html).toContain('远端仓库');
-    expect(panel.webview.html).toContain('历史记录');
-    expect(panel.webview.html).toContain('同步远端仓库（高级）');
-    expect(panel.webview.html).toContain('同步答案');
-    expect(panel.webview.html).toContain('提交评测（本地 + 头哥）');
+    expect(vscodeMock.createdPanels).toHaveLength(0);
+    expect(vscodeMock.executeCommand).toHaveBeenCalledWith(
+      'markdown.showPreview',
+      expect.objectContaining({ fsPath: statementPath }),
+    );
+    expect(vscodeMock.openTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ fsPath: currentCodePath }),
+    );
+    expect(revealInExplorer).toHaveBeenCalledWith(currentCodePath);
+    expect(vscodeMock.showTextDocument).toHaveBeenCalledTimes(1);
   });
 });

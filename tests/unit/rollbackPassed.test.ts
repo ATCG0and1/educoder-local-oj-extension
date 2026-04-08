@@ -72,7 +72,7 @@ describe('rollbackPassed', () => {
     await expect(readFile(path.join(taskRoot, '_educoder', 'passed', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'passed\n',
     );
-    await expect(readFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'passed\n',
     );
   });
@@ -103,8 +103,90 @@ describe('rollbackPassed', () => {
     });
 
     expect(fetchPassedFiles).not.toHaveBeenCalled();
-    await expect(readFile(path.join(taskRoot, 'workspace', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'cached passed\n',
+    );
+  });
+
+  it('fails without destroying workspace when the fetched passed snapshot is empty', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await import('node:fs/promises').then(({ mkdir }) =>
+      mkdir(path.join(taskRoot, 'code', 'current', 'test1'), { recursive: true }),
+    );
+    await writeFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'keep\n', 'utf8');
+
+    await writeJson(path.join(taskRoot, 'task.manifest.json'), {
+      taskId: 'fc7pz3fm6yjh',
+      name: '第1关 基本实训：链表操作',
+      position: 1,
+      folderName: '01 第1关 基本实训：链表操作 [fc7pz3fm6yjh]',
+    });
+    await writeJson(path.join(taskRoot, '..', '..', 'homework.manifest.json'), {
+      homeworkId: '3727439',
+      name: '2-2 基本实训-链表操作',
+      folderName: '2-2 基本实训-链表操作 [3727439]',
+      shixunIdentifier: 'a9k8ufmh',
+      tasks: [],
+    });
+
+    await expect(
+      rollbackPassed(taskRoot, {
+        taskDetailClient: {
+          getTaskDetail: async () => ({
+            taskId: 'fc7pz3fm6yjh',
+            homeworkId: '3727439',
+            taskName: '基本实训：链表操作',
+            editablePaths: ['test1/tasks.h'],
+            testSets: [],
+            raw: {},
+          }),
+        },
+        passedClient: {
+          fetchPassedFiles: async () => [],
+        },
+      }),
+    ).rejects.toThrow('通关快照为空');
+
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      'keep\n',
+    );
+  });
+
+  it('preserves unrelated workspace files when rolling back from a passed snapshot', async () => {
+    const taskRoot = await createTempTaskRoot();
+
+    await import('node:fs/promises').then(({ mkdir }) =>
+      Promise.all([
+        mkdir(path.join(taskRoot, '_educoder', 'passed', 'test1'), { recursive: true }),
+        mkdir(path.join(taskRoot, 'code', 'current', 'keep'), { recursive: true }),
+      ]),
+    );
+    await Promise.all([
+      writeFile(path.join(taskRoot, '_educoder', 'passed', 'test1', 'tasks.h'), 'cached passed\n', 'utf8'),
+      writeFile(path.join(taskRoot, 'code', 'current', 'keep', 'notes.txt'), 'keep me\n', 'utf8'),
+    ]);
+
+    await rollbackPassed(taskRoot, {
+      taskDetailClient: {
+        getTaskDetail: async () => ({
+          taskId: 'fc7pz3fm6yjh',
+          homeworkId: '3727439',
+          taskName: '基本实训：链表操作',
+          editablePaths: ['test1/tasks.h'],
+          testSets: [],
+          raw: {},
+        }),
+      },
+      passedClient: {
+        fetchPassedFiles: vi.fn(),
+      },
+    });
+
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
+      'cached passed\n',
+    );
+    await expect(readFile(path.join(taskRoot, 'code', 'current', 'keep', 'notes.txt'), 'utf8')).resolves.toBe(
+      'keep me\n',
     );
   });
 });

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { syncCollectionPackages } from '../../src/commands/syncCollectionPackages.js';
 import { openTaskCommand } from '../../src/commands/openTask.js';
+import { runLocalJudgeCommand } from '../../src/commands/runLocalJudge.js';
 import { submitTaskCommand } from '../../src/commands/submitTask.js';
 import { ROOT_FOLDER_URI_KEY } from '../../src/core/config/extensionState.js';
 import { configureCommandService, resetCommandServices } from '../../src/extension.js';
@@ -66,6 +67,12 @@ describe('command registration', () => {
     expect(commands).toContain('educoderLocalOj.selectRootFolder');
     expect(commands).toContain('educoderLocalOj.openTaskStatement');
     expect(commands).toContain('educoderLocalOj.openCurrentCode');
+    expect(commands).toContain('educoderLocalOj.openTaskTests');
+    expect(commands).toContain('educoderLocalOj.openTaskAnswers');
+    expect(commands).toContain('educoderLocalOj.openLatestFailureInput');
+    expect(commands).toContain('educoderLocalOj.openLatestFailureOutput');
+    expect(commands).not.toContain('educoderLocalOj.openTaskReadme');
+    expect(commands).not.toContain('educoderLocalOj.openLatestReport');
     expect(vscodeMock.registeredViewProviders.has('educoderLocalOj.sidebar')).toBe(true);
     expect(vscodeMock.registeredTreeProviders.has('educoderLocalOj.taskTree')).toBe(true);
     expect(packageJson.activationEvents).toContain('onView:educoderLocalOj.sidebar');
@@ -78,12 +85,30 @@ describe('command registration', () => {
         expect.objectContaining({ id: 'educoderLocalOj.taskTree' }),
       ]),
     );
-    expect((packageJson.contributes as any)?.menus?.['view/item/context']).toEqual(
+    const taskTreeItemMenus = ((packageJson.contributes as any)?.menus?.['view/item/context'] ?? []) as Array<{
+      command?: string;
+      group?: string;
+    }>;
+    expect(taskTreeItemMenus).not.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ command: 'educoderLocalOj.syncTaskAnswersFromTree' }),
-        expect.objectContaining({ command: 'educoderLocalOj.syncTaskRepositoryFromTree' }),
-        expect.objectContaining({ command: 'educoderLocalOj.compareWithTemplateFromTree' }),
-        expect.objectContaining({ command: 'educoderLocalOj.compareWithAnswerFromTree' }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.syncTaskAnswersFromTree',
+          group: expect.stringContaining('inline'),
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.syncTaskRepositoryFromTree',
+          group: expect.stringContaining('inline'),
+        }),
+      ]),
+    );
+    expect(taskTreeItemMenus).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: 'educoderLocalOj.compareWithTemplateFromTree',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.compareWithAnswerFromTree',
+        }),
       ]),
     );
     expect((packageJson.contributes as any)?.menus?.['view/title']).toEqual(
@@ -104,7 +129,31 @@ describe('command registration', () => {
         }),
         expect.objectContaining({
           command: 'educoderLocalOj.openTask',
-          title: 'Educoder Local OJ: 打开当前题目',
+          title: 'Educoder Local OJ: 选择/打开题目',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.openTaskTests',
+          title: 'Educoder Local OJ: 打开测试集',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.openTaskAnswers',
+          title: 'Educoder Local OJ: 打开答案',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.openLatestFailureInput',
+          title: 'Educoder Local OJ: 打开失败输入',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.openLatestFailureOutput',
+          title: 'Educoder Local OJ: 打开失败输出',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.compareWithTemplateFromTree',
+          title: 'Educoder Local OJ: 对比模板（目录）',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.compareWithAnswerFromTree',
+          title: 'Educoder Local OJ: 对比答案（目录）',
         }),
       ]),
     );
@@ -184,7 +233,17 @@ describe('command registration', () => {
             mkdir(path.dirname(markerPath), { recursive: true }),
           );
           await writeFile(markerPath, '# 题面\n', 'utf8');
-          return { taskRoot };
+          return {
+            taskRoot,
+            materials: {
+              statement: 'ready',
+              currentCode: 'ready',
+              templateCode: 'ready',
+              tests: 'ready',
+              answers: 'ready',
+              metadata: 'ready',
+            },
+          };
         },
       }),
     );
@@ -198,15 +257,18 @@ describe('command registration', () => {
           taskRoot: expect.stringContaining('fc7pz3fm6yjh'),
         }),
       ],
+      defaultTask: expect.objectContaining({
+        taskRoot: expect.stringContaining('fc7pz3fm6yjh'),
+      }),
     });
     expect(vscodeMock.showOpenDialog).toHaveBeenCalledTimes(1);
     expect(vscodeMock.updateWorkspaceFolders).toHaveBeenCalledWith(
       0,
       0,
       expect.objectContaining({
-        name: 'Educoder Local OJ',
+        name: '第二章 线性表及应用 [1316861]',
         uri: expect.objectContaining({
-          fsPath: path.join(rootDir, 'Educoder Local OJ'),
+          fsPath: path.join(rootDir, 'Educoder Local OJ', '课程 [ufr7sxlc]', '第二章 线性表及应用 [1316861]'),
         }),
       }),
     );
@@ -231,12 +293,13 @@ describe('command registration', () => {
       expect.arrayContaining([
         expect.objectContaining({
           uri: expect.objectContaining({
-            fsPath: path.join(rootDir, 'Educoder Local OJ'),
+            fsPath: path.join(rootDir, 'Educoder Local OJ', '课程 [ufr7sxlc]', '第二章 线性表及应用 [1316861]'),
           }),
         }),
       ]),
     );
   });
+
 
   it('opens the real statement file and current code file through registered commands', async () => {
     const vscodeMock = (vscode as any).__mock;
@@ -275,9 +338,244 @@ describe('command registration', () => {
 
     expect(statementResult).toMatchObject({ openedPath: statementPath });
     expect(currentCodeResult).toMatchObject({ openedPath: currentCodePath });
-    expect(vscodeMock.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: statementPath }));
+    expect(vscodeMock.executeCommand).toHaveBeenCalledWith(
+      'markdown.showPreview',
+      expect.objectContaining({ fsPath: statementPath }),
+    );
     expect(vscodeMock.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: currentCodePath }));
-    expect(vscodeMock.showTextDocument).toHaveBeenCalledTimes(2);
+    expect(vscodeMock.showTextDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens tests and answers through registered commands', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const taskRoot = await createTempTaskRoot();
+    const testsIndexPath = path.join(taskRoot, 'tests', 'index.json');
+    const testsAllDir = path.join(taskRoot, 'tests', 'all');
+    const answerIndexPath = path.join(taskRoot, 'answers', 'index.md');
+    const answerFilePath = path.join(taskRoot, 'answers', 'answer-1.md');
+
+    await import('node:fs/promises').then(({ mkdir }) =>
+      Promise.all([
+        mkdir(path.dirname(testsIndexPath), { recursive: true }),
+        mkdir(testsAllDir, { recursive: true }),
+        mkdir(path.dirname(answerIndexPath), { recursive: true }),
+        mkdir(path.dirname(answerFilePath), { recursive: true }),
+      ]),
+    );
+    await Promise.all([
+      writeFile(testsIndexPath, JSON.stringify({ total: 1 }, null, 2), 'utf8'),
+      writeFile(answerIndexPath, '# 答案\n', 'utf8'),
+      writeFile(path.join(testsAllDir, 'case_001_input.txt'), '1 2\n', 'utf8'),
+      writeFile(path.join(testsAllDir, 'case_001_output.txt'), '3\n', 'utf8'),
+      writeFile(answerFilePath, '# answer\n', 'utf8'),
+    ]);
+
+    const testsResult = await vscode.commands.executeCommand(
+      'educoderLocalOj.openTaskTests',
+      taskRoot,
+    );
+    const answersResult = await vscode.commands.executeCommand(
+      'educoderLocalOj.openTaskAnswers',
+      taskRoot,
+    );
+    expect(testsResult).toMatchObject({ openedPath: testsAllDir, openedKind: 'directory' });
+    expect(answersResult).toMatchObject({ openedPath: answerFilePath, openedKind: 'file' });
+    expect(vscodeMock.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: answerFilePath }));
+  });
+
+  it('runs the registered local-judge command without relying on popup feedback', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const taskRoot = await createTempTaskRoot();
+
+    configureCommandService('educoderLocalOj.runLocalJudge', (root) =>
+      runLocalJudgeCommand(String(root), {
+        runLocalJudge: async () => ({
+          source: 'tests/all',
+          workspacePath: 'code/current',
+          runMode: 'full',
+          compile: {
+            verdict: 'compiled',
+            stdout: '',
+            stderr: '',
+            executablePath: path.join(String(root), 'app.exe'),
+          },
+          caseResults: [],
+          summary: {
+            total: 3,
+            passed: 3,
+            failed: 0,
+          },
+        }),
+      }),
+    );
+
+    const result = await vscode.commands.executeCommand('educoderLocalOj.runLocalJudge', taskRoot);
+
+    expect(result).toMatchObject({
+      source: 'tests/all',
+      workspacePath: 'code/current',
+      summary: {
+        total: 3,
+        passed: 3,
+        failed: 0,
+      },
+    });
+    expect(vscodeMock.saveAll).toHaveBeenCalledTimes(1);
+    expect(vscodeMock.showInformationMessage).not.toHaveBeenCalled();
+    expect(vscodeMock.showErrorMessage).not.toHaveBeenCalled();
+  });
+
+  it('opens the latest failed input/output files through registered commands', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const taskRoot = await createTempTaskRoot();
+    const inputPath = path.join(taskRoot, 'tests', 'all', 'case_002_input.txt');
+    const outputPath = path.join(taskRoot, 'tests', 'all', 'case_002_output.txt');
+    const reportPath = path.join(taskRoot, '_educoder', 'judge', 'latest_local.json');
+
+    await import('node:fs/promises').then(({ mkdir }) =>
+      Promise.all([
+        mkdir(path.dirname(inputPath), { recursive: true }),
+        mkdir(path.dirname(reportPath), { recursive: true }),
+      ]),
+    );
+    await Promise.all([
+      writeFile(inputPath, '1 2\n', 'utf8'),
+      writeFile(outputPath, '3\n', 'utf8'),
+      writeFile(
+        reportPath,
+        JSON.stringify(
+          {
+            source: 'tests/all',
+            runMode: 'full',
+            compile: { verdict: 'compiled', stdout: '', stderr: '', executablePath: 'app.exe' },
+            caseResults: [
+              {
+                caseId: 'case_002',
+                verdict: 'failed',
+                inputPath: 'tests/all/case_002_input.txt',
+                outputPath: 'tests/all/case_002_output.txt',
+                expected: '3\n',
+                actual: '2\n',
+                stdout: '2\n',
+                stderr: '',
+              },
+            ],
+            summary: { total: 3, passed: 2, failed: 1 },
+          },
+          null,
+          2,
+        ),
+        'utf8',
+      ),
+    ]);
+
+    const inputResult = await vscode.commands.executeCommand(
+      'educoderLocalOj.openLatestFailureInput',
+      taskRoot,
+    );
+    const outputResult = await vscode.commands.executeCommand(
+      'educoderLocalOj.openLatestFailureOutput',
+      taskRoot,
+    );
+
+    expect(inputResult).toMatchObject({ openedPath: inputPath, openedKind: 'file' });
+    expect(outputResult).toMatchObject({ openedPath: outputPath, openedKind: 'file' });
+    expect(vscodeMock.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: inputPath }));
+    expect(vscodeMock.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: outputPath }));
+  });
+
+  it('shows an explicit submit-stop message when local tests fail before remote submission', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const taskRoot = await createTempTaskRoot();
+    const runRemoteJudge = vi.fn();
+
+    configureCommandService('educoderLocalOj.submitTask', (root) =>
+      submitTaskCommand(String(root), {
+        runLocalJudge: async () => ({
+          source: 'tests/all',
+          runMode: 'full',
+          compile: {
+            verdict: 'compile_error',
+            stdout: '',
+            stderr: 'main.cpp:1:1: error: boom',
+          },
+          caseResults: [],
+          summary: {
+            total: 0,
+            passed: 0,
+            failed: 0,
+          },
+        }),
+        runRemoteJudge,
+      }),
+    );
+
+    const result = await vscode.commands.executeCommand('educoderLocalOj.submitTask', taskRoot);
+
+    expect(result).toMatchObject({
+      decision: 'stopped_after_local_failure',
+      remote: {
+        executed: false,
+      },
+    });
+    expect(vscodeMock.saveAll).toHaveBeenCalledTimes(1);
+    expect(runRemoteJudge).not.toHaveBeenCalled();
+    expect(vscodeMock.showErrorMessage).toHaveBeenCalledWith('本地测试未通过，未提交到头哥：编译失败');
+  });
+
+  it('shows an explicit submit result message when Educoder returns a verdict', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const taskRoot = await createTempTaskRoot();
+
+    configureCommandService('educoderLocalOj.submitTask', (root) =>
+      submitTaskCommand(String(root), {
+        runLocalJudge: async () => ({
+          source: 'tests/all',
+          runMode: 'full',
+          compile: {
+            verdict: 'compiled',
+            stdout: '',
+            stderr: '',
+            executablePath: path.join(String(root), 'app.exe'),
+          },
+          caseResults: [],
+          summary: {
+            total: 2,
+            passed: 2,
+            failed: 0,
+          },
+        }),
+        runRemoteJudge: async () => ({
+          source: 'remote',
+          codeHash: 'hash-1',
+          generatedAt: new Date().toISOString(),
+          summary: {
+            verdict: 'passed',
+            score: 100,
+            passedCount: 2,
+            totalCount: 2,
+            message: 'Accepted',
+            rawLogPath: path.join(String(root), '_educoder', 'judge', 'remote_runs', 'latest.json'),
+          },
+        }),
+      }),
+    );
+
+    const result = await vscode.commands.executeCommand('educoderLocalOj.submitTask', taskRoot);
+
+    expect(result).toMatchObject({
+      decision: 'submitted_after_local_pass',
+      remote: {
+        executed: true,
+        verdict: 'passed',
+        score: 100,
+        passedCount: 2,
+        totalCount: 2,
+        message: 'Accepted',
+      },
+    });
+    expect(vscodeMock.saveAll).toHaveBeenCalledTimes(1);
+    expect(vscodeMock.showInformationMessage).toHaveBeenCalledWith('已提交到头哥：已通过 2/2 · Accepted');
   });
 
   it('keeps legacy task roots usable through command ids while migrating them forward safely', async () => {
@@ -307,9 +605,7 @@ describe('command registration', () => {
     ]);
 
     configureCommandService('educoderLocalOj.openTask', (root) =>
-      openTaskCommand(String(root), {
-        openPanel: vi.fn(),
-      }),
+      openTaskCommand(String(root)),
     );
     configureCommandService('educoderLocalOj.submitTask', (root) =>
       submitTaskCommand(String(root), {
@@ -327,8 +623,10 @@ describe('command registration', () => {
           summary: {
             verdict: 'passed',
             score: 100,
+            passedCount: 1,
+            totalCount: 1,
             message: 'Accepted',
-            rawLogPath: path.join(String(root), '_educoder', 'logs', 'remote', 'latest.json'),
+            rawLogPath: path.join(String(root), '_educoder', 'judge', 'remote_runs', 'latest.json'),
           },
         }),
       }),

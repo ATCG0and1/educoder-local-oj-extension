@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { HistoryFetchClientLike } from '../core/api/historyFetchClient.js';
 import { readHistoryIndex, writeHistorySnapshot } from '../core/recovery/historyStore.js';
@@ -50,7 +50,6 @@ async function readManifestBundle(taskRoot: string): Promise<{
 }
 
 async function restoreWorkspaceFromSnapshotDir(snapshotDir: string, workspaceDir: string): Promise<void> {
-  await rm(workspaceDir, { recursive: true, force: true });
   await mkdir(workspaceDir, { recursive: true });
   await cp(snapshotDir, workspaceDir, {
     recursive: true,

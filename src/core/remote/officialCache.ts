@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { OfficialJudgeSummary } from './officialLogStore.js';
+import { resolveTaskPackagePaths } from '../workspace/taskPackageMigration.js';
 
 export interface CachedOfficialJudgeEntry {
   codeHash: string;
@@ -14,7 +15,8 @@ interface OfficialJudgeCacheIndex {
 }
 
 export async function computeWorkspaceCodeHash(taskRoot: string): Promise<string> {
-  const workspaceDir = path.join(taskRoot, 'workspace');
+  const resolvedPaths = await resolveTaskPackagePaths(taskRoot);
+  const workspaceDir = resolvedPaths.currentCodeDir;
   const filePaths = await collectFilePaths(workspaceDir, workspaceDir);
   const hash = createHash('sha256');
 
