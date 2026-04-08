@@ -5,7 +5,10 @@ docs/**
 .github/**
 .vscode/**
 .gitignore
-agent.md
+AGENTS.md
+CHANGELOG.md
+.gitattributes
+scripts/**
 实验复盘.md
 *.vsix
 src/**/*.ts

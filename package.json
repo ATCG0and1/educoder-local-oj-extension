@@ -124,7 +124,11 @@
   "scripts": {
     "build": "tsc -p . && node -e \"const fs=require('fs');const p=require('./package.json').main.replace(/^\\.\\//,'');if(!fs.existsSync(p)){console.error('Missing main output: '+p);process.exit(1)}\"",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify": "npm test && npm run typecheck && npm run build",
+    "package:vsix": "npx @vscode/vsce package",
+    "release:check": "node scripts/release-check.mjs",
+    "release:check:tagged": "node scripts/release-check.mjs --require-tag"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

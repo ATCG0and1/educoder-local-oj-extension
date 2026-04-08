@@ -33,8 +33,6 @@
   - 结果落盘到 `_educoder/judge/latest_local.json`
 - **远端提交流**
   - 默认先本地测试，再提交头哥
-- **兼容旧目录**
-  - 对旧任务结构做前向兼容，不强删旧文件
 
 ---
 
@@ -52,8 +50,8 @@
 
 ```bash
 npm install
-npm run build
-npx @vscode/vsce package
+npm run verify
+npm run package:vsix
 ```
 
 然后安装生成的 `.vsix`。
@@ -119,10 +117,9 @@ npx @vscode/vsce package
 
 ```bash
 npm install
-npm test
-npm run typecheck
-npm run build
-npx @vscode/vsce package
+npm run verify
+npm run release:check
+npm run package:vsix
 ```
 
 本次恢复版本已验证以上命令可通过。
