@@ -178,7 +178,12 @@ describe('stateModel', () => {
           compile: {
             verdict: 'compile_error',
             stdout: '',
-            stderr: 'main.cpp:1: error: missing ;\n',
+            stderr: [
+              'add/polynomial.cpp: In member function `float polynomial::sum() const`:',
+              'add/polynomial.cpp:15:11: error: expected `;` at end of member declaration',
+              '    float coef// 系数',
+              '          ^',
+            ].join('\n'),
             executablePath: undefined,
           },
           caseResults: [],
@@ -187,7 +192,11 @@ describe('stateModel', () => {
       }).localJudge,
     ).toMatchObject({
       headline: '编译失败',
-      detail: 'main.cpp:1: error: missing ;',
+      detail: [
+        'add/polynomial.cpp:15:11: error: expected `;` at end of member declaration',
+        '    float coef// 系数',
+        '          ^',
+      ].join('\n'),
     });
 
     expect(

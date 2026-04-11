@@ -54,7 +54,12 @@ describe('runLocalJudgeCommand', () => {
         compile: {
           verdict: 'compile_error',
           stdout: '',
-          stderr: '',
+          stderr: [
+            'add/polynomial.cpp: In member function `float polynomial::sum() const`:',
+            'add/polynomial.cpp:15:11: error: expected `;` at end of member declaration',
+            '    float coef// 系数',
+            '          ^',
+          ].join('\n'),
           executablePath: undefined,
         },
         caseResults: [],
@@ -71,7 +76,14 @@ describe('runLocalJudgeCommand', () => {
     });
 
     expect(showInformationMessage).not.toHaveBeenCalled();
-    expect(showErrorMessage).toHaveBeenCalledWith('本地结果：编译失败 · 请检查编译输出。');
+    expect(showErrorMessage).toHaveBeenCalledWith(
+      [
+        '本地结果：编译失败',
+        'add/polynomial.cpp:15:11: error: expected `;` at end of member declaration',
+        '    float coef// 系数',
+        '          ^',
+      ].join('\n'),
+    );
   });
 
   it('uses case-oriented failure toast copy when notifications are explicitly enabled for a failed case', async () => {

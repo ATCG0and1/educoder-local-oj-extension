@@ -1,6 +1,7 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { LocalJudgeReport } from '../judge/resultStore.js';
+import { extractFirstCompileDiagnosticBlock } from '../judge/compileDiagnostics.js';
 import { readLocalJudgeReport } from '../judge/resultStore.js';
 import { readHistoryIndex } from '../recovery/historyStore.js';
 import { readRecoveryMetadata, type RecoveryMetadata } from '../recovery/materialStore.js';
@@ -317,19 +318,22 @@ function buildLocalJudgeInsight(localReport: LocalJudgeReport): {
   failureOutputPath?: string;
 } {
   if (localReport.compile.verdict === 'compile_error') {
-    const compileContext = summarizeCompileContext(localReport);
+    const diagnosticBlock =
+      extractFirstCompileDiagnosticBlock(localReport.compile.stderr) ??
+      extractFirstCompileDiagnosticBlock(localReport.compile.stdout);
+    const compileContext = diagnosticBlock ? undefined : summarizeCompileContext(localReport);
     return {
       headline: '编译失败',
       detail:
         [
-          firstNonEmptyLine(localReport.compile.stderr) ??
+          diagnosticBlock ??
+            firstNonEmptyLine(localReport.compile.stderr) ??
             firstNonEmptyLine(localReport.compile.stdout) ??
             '请检查编译输出。',
           compileContext,
         ]
           .filter((item): item is string => Boolean(item))
-          .join('\n') ??
-        '请检查编译输出。',
+          .join('\n'),
     };
   }
 

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { extractFirstCompileDiagnosticBlock } from '../core/judge/compileDiagnostics.js';
 import { runLocalJudge } from '../core/judge/localRunner.js';
 import type { LocalJudgeReport } from '../core/judge/resultStore.js';
 
@@ -44,11 +45,19 @@ async function notifyLocalJudgeResult(
   window: JudgeFeedbackWindow,
 ): Promise<void> {
   if (report.compile.verdict === 'compile_error') {
+    const diagnosticBlock =
+      extractFirstCompileDiagnosticBlock(report.compile.stderr) ??
+      extractFirstCompileDiagnosticBlock(report.compile.stdout);
     const detail =
+      diagnosticBlock ??
       firstNonEmptyLine(report.compile.stderr) ??
       firstNonEmptyLine(report.compile.stdout) ??
       '请检查编译输出。';
-    void window.showErrorMessage(`本地结果：编译失败 · ${detail}`);
+    void window.showErrorMessage(
+      diagnosticBlock
+        ? ['本地结果：编译失败', detail].join('\n')
+        : `本地结果：编译失败 · ${detail}`,
+    );
     return;
   }
 

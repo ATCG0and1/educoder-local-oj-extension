@@ -10,6 +10,13 @@ All notable changes to this project will be documented in this file.
 - added `AGENTS.md`, `CHANGELOG.md`, `.gitattributes`, and a release-state check script
 - removed internal compatibility wording from the public README
 
+## [0.0.4] - 2026-04-12
+
+### Fixed
+
+- made local compile failures prefer the first GCC-style `file:line:column: error: ...` block instead of showing only generic function-context lines
+- aligned local compile-failure summaries and explicit toast notifications so they both preserve the first code line and caret line from the compiler output
+
 ## [0.0.3] - 2026-04-11
 
 ### Fixed
