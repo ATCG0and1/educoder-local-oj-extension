@@ -171,4 +171,43 @@ describe('runLocalJudge', () => {
     expect(result.runMode).toBe('failed-only');
     expect(result.caseResults.map((item) => item.caseId)).toEqual(['case_002']);
   });
+
+  it('passes editable compile preferences into the compiler so the build scope matches the current task workspace', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'src', 'main.cpp'), 'int main() {}\n');
+    await writeTextFile(path.join(taskRoot, 'tests', 'all', 'case_001_input.txt'), '1\n');
+    await writeTextFile(path.join(taskRoot, 'tests', 'all', 'case_001_output.txt'), '1\n');
+    await writeTextFile(
+      path.join(taskRoot, '_educoder', 'meta', 'task.json'),
+      JSON.stringify({ editablePaths: ['src/main.cpp', 'docs/notes.md'] }, null, 2),
+    );
+
+    const compileWorkspace = vi.fn(async ({ workspaceDir }: { workspaceDir: string }) => ({
+      success: true,
+      executablePath: path.join(workspaceDir, 'app.exe'),
+      stdout: '',
+      stderr: '',
+      sourceFiles: ['src/main.cpp'],
+    }));
+    const executeBinary = vi.fn(async () => ({
+      stdout: '1\n',
+      stderr: '',
+      exitCode: 0,
+      timedOut: false,
+    }));
+
+    await runLocalJudge({
+      taskRoot,
+      compileWorkspace: compileWorkspace as any,
+      executeBinary,
+    });
+
+    expect(compileWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceDir: path.join(taskRoot, 'code', 'current'),
+        preferredSourcePaths: ['src/main.cpp', 'docs/notes.md'],
+        compileScopes: ['src', 'docs'],
+      }),
+    );
+  });
 });

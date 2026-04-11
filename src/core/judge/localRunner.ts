@@ -12,6 +12,7 @@ import {
 } from './resultStore.js';
 import { classifyCaseVerdict } from './verdict.js';
 import { resolveTaskPackagePaths } from '../workspace/taskPackageMigration.js';
+import { normalizeSafeRelativeFilePath } from '../workspace/workspaceInit.js';
 
 export interface ExecuteBinaryInput {
   executablePath: string;
@@ -31,7 +32,11 @@ export interface RunLocalJudgeInput {
   taskRoot: string;
   rerunFailedOnly?: boolean;
   lastReport?: LocalJudgeReport;
-  compileWorkspace?: (input: { workspaceDir: string }) => Promise<CompileWorkspaceResult>;
+  compileWorkspace?: (input: {
+    workspaceDir: string;
+    preferredSourcePaths?: string[];
+    compileScopes?: string[];
+  }) => Promise<CompileWorkspaceResult>;
   executeBinary?: (input: ExecuteBinaryInput) => Promise<ExecuteBinaryResult>;
 }
 
@@ -63,7 +68,12 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
 
   const compileWorkspaceFn = input.compileWorkspace ?? compileWorkspace;
   const executeBinaryFn = input.executeBinary ?? executeBinary;
-  const compilation = await compileWorkspaceFn({ workspaceDir });
+  const compilePreferences = await readCompilePreferences(input.taskRoot);
+  const compilation = await compileWorkspaceFn({
+    workspaceDir,
+    preferredSourcePaths: compilePreferences.preferredSourcePaths,
+    compileScopes: compilePreferences.compileScopes,
+  });
   const compileSummary = toCompileSummary(compilation);
 
   if (!compilation.success || !compilation.executablePath) {
@@ -159,7 +169,49 @@ function toCompileSummary(compilation: CompileWorkspaceResult): CompileResultSum
     stdout: compilation.stdout,
     stderr: compilation.stderr,
     executablePath: compilation.executablePath,
+    sourceFiles: compilation.sourceFiles,
   };
+}
+
+async function readCompilePreferences(taskRoot: string): Promise<{
+  preferredSourcePaths?: string[];
+  compileScopes?: string[];
+}> {
+  try {
+    const raw = JSON.parse(
+      await readFile(path.join(taskRoot, '_educoder', 'meta', 'task.json'), 'utf8'),
+    ) as { editablePaths?: unknown };
+    if (!Array.isArray(raw.editablePaths)) {
+      return {};
+    }
+
+    const preferredSourcePaths = raw.editablePaths
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .map((item) => {
+        try {
+          return normalizeSafeRelativeFilePath(item);
+        } catch {
+          return undefined;
+        }
+      })
+      .filter((item, index, items): item is string => item !== undefined && items.indexOf(item) === index);
+
+    if (preferredSourcePaths.length === 0) {
+      return {};
+    }
+
+    const compileScopes = preferredSourcePaths
+      .map((relativePath) => path.posix.dirname(relativePath))
+      .map((scope) => (scope === '.' ? '' : scope))
+      .filter((scope, index, scopes) => scopes.indexOf(scope) === index);
+
+    return {
+      preferredSourcePaths,
+      compileScopes,
+    };
+  } catch {
+    return {};
+  }
 }
 
 async function discoverLocalCases(

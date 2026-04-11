@@ -1,7 +1,7 @@
 {
   "name": "educoder-local-oj-extension",
   "displayName": "Educoder Local OJ Extension",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Sync Educoder shixun_homework collections into a local OJ workflow inside VS Code.",
   "publisher": "young-lab",
@@ -103,8 +103,22 @@
       { "command": "educoderLocalOj.syncTaskAnswersFromTree", "title": "Educoder Local OJ: 同步答案（目录）" },
       { "command": "educoderLocalOj.compareWithTemplateFromTree", "title": "Educoder Local OJ: 对比模板（目录）" },
       { "command": "educoderLocalOj.compareWithAnswerFromTree", "title": "Educoder Local OJ: 对比答案（目录）" },
-      { "command": "educoderLocalOj.filterTaskTree", "title": "Educoder Local OJ: 筛选题目目录" },
-      { "command": "educoderLocalOj.clearTaskTreeFilter", "title": "Educoder Local OJ: 清除题目筛选" }
+      {
+        "command": "educoderLocalOj.filterTaskTree",
+        "title": "Educoder Local OJ: 筛选题目目录",
+        "icon": {
+          "light": "media/filter-title.svg",
+          "dark": "media/filter-title.svg"
+        }
+      },
+      {
+        "command": "educoderLocalOj.clearTaskTreeFilter",
+        "title": "Educoder Local OJ: 清除题目筛选",
+        "icon": {
+          "light": "media/clear-filter-title.svg",
+          "dark": "media/clear-filter-title.svg"
+        }
+      }
     ],
     "menus": {
       "view/title": [

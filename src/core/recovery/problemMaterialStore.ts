@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProblemMaterial } from '../api/problemFetchClient.js';
 import type { TaskLayoutPaths } from '../workspace/directoryLayout.js';
@@ -8,9 +8,12 @@ export async function writeProblemMaterial(
   material: ProblemMaterial,
 ): Promise<void> {
   const samplesDir = path.join(layout.problemDir, 'samples');
-  const statementMarkdown = material.statementMarkdown ?? material.statementHtml;
 
   await mkdir(samplesDir, { recursive: true });
+  await Promise.all([
+    rm(layout.statementMarkdownPath, { force: true }),
+    rm(layout.statementHtmlPath, { force: true }),
+  ]);
 
   const writes: Promise<unknown>[] = [
     writeFile(path.join(layout.problemDir, 'title.txt'), material.title, 'utf8'),
@@ -31,8 +34,8 @@ export async function writeProblemMaterial(
     ),
   ];
 
-  if (statementMarkdown) {
-    writes.push(writeFile(layout.statementMarkdownPath, statementMarkdown, 'utf8'));
+  if (material.statementMarkdown) {
+    writes.push(writeFile(layout.statementMarkdownPath, material.statementMarkdown, 'utf8'));
   }
 
   if (material.statementHtml) {

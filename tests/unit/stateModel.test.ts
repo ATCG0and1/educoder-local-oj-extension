@@ -255,7 +255,7 @@ describe('stateModel', () => {
       }).localJudge,
     ).toMatchObject({
       headline: '首个失败：case_002',
-      detail: '输入 tests/all/case_002_input.txt · 期望 5 · 实际 4',
+      detail: '输入 tests/all/case_002_input.txt\n期望：5\n实际：4',
       failureInputPath: 'tests/all/case_002_input.txt',
       failureOutputPath: 'tests/all/case_002_output.txt',
     });

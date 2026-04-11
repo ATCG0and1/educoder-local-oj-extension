@@ -95,7 +95,7 @@ describe('renderTask', () => {
     expect(html).toContain('data-educoder-command="educoderLocalOj.openCurrentCode"');
     expect(html).toContain('测试集');
     expect(html).toContain('data-educoder-command="educoderLocalOj.openTaskTests"');
-    expect(html).toContain('答案');
+    expect(html).toContain('打开答案');
     expect(html).toContain('data-educoder-command="educoderLocalOj.openTaskAnswers"');
     expect(html).toContain('失败输入');
     expect(html).toContain('data-educoder-command="educoderLocalOj.openLatestFailureInput"');
@@ -116,7 +116,7 @@ describe('renderTask', () => {
     expect(html).not.toContain('进阶工具');
     expect(html).not.toContain('打开当前代码');
     expect(html).not.toContain('打开测试集');
-    expect(html).not.toContain('打开答案');
+    expect(html).not.toContain('答案与解析');
     expect(html).not.toContain('运行本地测试');
     expect(html).not.toContain('提交到头哥（先跑本地）');
     expect(html).not.toContain('强制提交到头哥');
@@ -173,5 +173,50 @@ describe('renderTask', () => {
 
     expect(html).not.toContain('失败输入');
     expect(html).not.toContain('失败输出');
+  });
+
+  it('shows local-pass guidance when headguy has not been submitted yet', () => {
+    const html = renderTask(
+      {
+        taskId: 'fc7pz3fm6yjh',
+        taskName: '第1关 基本实训：链表操作',
+        displayTitle: '2-2 · 第1关 基本实训：链表操作',
+        state: '本地评测已过',
+        solveState: '本地测试已过',
+        availableStates: ['本地测试已过'],
+        readiness: 'local_ready',
+        hiddenTestsCached: true,
+        localCaseCount: 5,
+        materials: {
+          statement: 'ready',
+          template: 'ready',
+          currentCode: 'ready',
+          tests: 'ready',
+          answers: 'ready',
+          metadata: 'ready',
+        },
+        templateReady: true,
+        passedReady: false,
+        answerEntryCount: 0,
+        unlockedAnswerCount: 0,
+        repositoryReady: false,
+        repositoryFileCount: 0,
+        historyEntryCount: 1,
+        localJudge: {
+          source: 'tests/all',
+          compileVerdict: 'compiled',
+          total: 5,
+          passed: 5,
+          failed: 0,
+          headline: '本地已通过 5/5',
+          detail: '可继续提交到头哥，默认来源 tests/all',
+        },
+      },
+      'C:/task-root',
+    );
+
+    expect(html).toContain('头哥结果');
+    expect(html).toContain('待提交');
+    expect(html).toContain('本地已通过，可提交到头哥');
   });
 });

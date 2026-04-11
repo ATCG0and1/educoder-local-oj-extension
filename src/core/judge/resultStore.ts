@@ -9,6 +9,7 @@ export interface CompileResultSummary {
   stdout: string;
   stderr: string;
   executablePath?: string;
+  sourceFiles?: string[];
 }
 
 export interface LocalJudgeCaseResult {

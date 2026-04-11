@@ -151,6 +151,8 @@ function renderDashboardHtml(model: DashboardPanelModel | undefined): string {
         color: var(--vscode-descriptionForeground);
         font-size: 12px;
         line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
       .tone-success .summary-value { color: var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen)); }
       .tone-error .summary-value { color: var(--vscode-testing-iconFailed, var(--vscode-errorForeground)); }

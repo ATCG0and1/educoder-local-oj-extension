@@ -317,11 +317,18 @@ function buildLocalJudgeInsight(localReport: LocalJudgeReport): {
   failureOutputPath?: string;
 } {
   if (localReport.compile.verdict === 'compile_error') {
+    const compileContext = summarizeCompileContext(localReport);
     return {
       headline: '编译失败',
       detail:
-        firstNonEmptyLine(localReport.compile.stderr) ??
-        firstNonEmptyLine(localReport.compile.stdout) ??
+        [
+          firstNonEmptyLine(localReport.compile.stderr) ??
+            firstNonEmptyLine(localReport.compile.stdout) ??
+            '请检查编译输出。',
+          compileContext,
+        ]
+          .filter((item): item is string => Boolean(item))
+          .join('\n') ??
         '请检查编译输出。',
     };
   }
@@ -334,12 +341,12 @@ function buildLocalJudgeInsight(localReport: LocalJudgeReport): {
     if (firstFailed.inputPath) {
       detailParts.push(`输入 ${firstFailed.inputPath}`);
     }
-    detailParts.push(`期望 ${expected}`);
-    detailParts.push(`实际 ${actual}`);
+    detailParts.push(`期望：${expected}`);
+    detailParts.push(`实际：${actual}`);
 
     return {
       headline: `首个失败：${firstFailed.caseId}`,
-      detail: detailParts.join(' · '),
+      detail: detailParts.join('\n'),
       failureCaseId: firstFailed.caseId,
       failureInputPath: firstFailed.inputPath,
       failureOutputPath: firstFailed.outputPath,
@@ -435,12 +442,15 @@ function resolveTaskDisplayTitle(taskManifest?: TaskManifest): string | undefine
 }
 
 function previewCaseText(value: string): string {
-  const singleLine = value.replace(/\s+/g, ' ').trim();
-  if (!singleLine) {
+  const normalized = value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\s+$/g, '');
+  if (!normalized.trim()) {
     return '空输出';
   }
 
-  return singleLine.length > 48 ? `${singleLine.slice(0, 45)}…` : singleLine;
+  const lines = normalized.split('\n');
+  const previewLines = lines.slice(0, 2).map((line) => (line.length > 48 ? `${line.slice(0, 45)}…` : line));
+  const preview = previewLines.join('\n');
+  return lines.length > previewLines.length ? `${preview}\n…（共 ${lines.length} 行）` : preview;
 }
 
 function firstNonEmptyLine(value?: string): string | undefined {
@@ -454,6 +464,23 @@ function normalizeCount(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0
     ? Math.trunc(value)
     : undefined;
+}
+
+function summarizeCompileContext(localReport: LocalJudgeReport): string | undefined {
+  const contextParts: string[] = [];
+  if (localReport.workspacePath) {
+    contextParts.push(`目录：${localReport.workspacePath}`);
+  }
+
+  const sourceFiles = localReport.compile.sourceFiles ?? [];
+  if (sourceFiles.length === 1) {
+    contextParts.push(`文件：${sourceFiles[0]}`);
+  } else if (sourceFiles.length > 1) {
+    const [firstSource, ...rest] = sourceFiles;
+    contextParts.push(`文件：${firstSource}${rest.length > 0 ? ` 等 ${sourceFiles.length} 个` : ''}`);
+  }
+
+  return contextParts.length > 0 ? contextParts.join(' · ') : undefined;
 }
 
 async function readTaskManifest(taskRoot: string): Promise<TaskManifest | undefined> {

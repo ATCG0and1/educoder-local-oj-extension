@@ -157,8 +157,8 @@ function renderSidebarHtml(model: {
       .stack { display:flex; flex-direction:column; gap:12px; }
       .card {
         background: linear-gradient(180deg, color-mix(in srgb, var(--vscode-editorWidget-background) 92%, transparent), var(--vscode-editorWidget-background));
-        border-radius: 16px;
-        padding: 14px;
+        border-radius: 18px;
+        padding: 16px;
         border: 1px solid var(--vscode-widget-border, var(--vscode-sideBarSectionHeader-border));
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
       }
@@ -169,22 +169,32 @@ function renderSidebarHtml(model: {
       }
       .eyebrow {
         font-size: 11px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        letter-spacing: 0.06em;
         color: var(--vscode-descriptionForeground);
         margin-bottom: 6px;
       }
-      h1, h2 { margin: 0 0 8px 0; line-height: 1.25; }
-      .muted { color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.7; margin: 0; }
+      h1, h2 { margin: 0 0 8px 0; line-height: 1.25; text-wrap: balance; }
+      h1 {
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+      .muted {
+        color: var(--vscode-descriptionForeground);
+        font-size: 12px;
+        line-height: 1.7;
+        margin: 0;
+      }
       .action-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
       .action-button {
+        min-height: 38px;
         padding: 8px 12px;
-        border-radius: 10px;
+        border-radius: 12px;
         border: 1px solid color-mix(in srgb, var(--vscode-button-border, var(--vscode-contrastBorder)) 65%, transparent);
         background: color-mix(in srgb, var(--vscode-button-secondaryBackground, var(--vscode-editor-background)) 88%, transparent);
         color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
         cursor: pointer;
         transition: transform .12s ease, background .12s ease, border-color .12s ease;
+        font: inherit;
       }
       .action-button:hover {
         transform: translateY(-1px);
@@ -205,6 +215,91 @@ function renderSidebarHtml(model: {
         background: color-mix(in srgb, var(--vscode-textBlockQuote-background, var(--vscode-editor-background)) 85%, transparent);
         border: 1px solid color-mix(in srgb, var(--vscode-button-background) 22%, transparent);
       }
+      .task-card--compact .eyebrow { margin-bottom: 8px; }
+      .task-card--compact h2 {
+        margin: 0;
+        font-size: clamp(18px, 3.2vw, 24px);
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+      }
+      .task-status {
+        margin: 14px 0 0 0;
+        color: var(--vscode-foreground);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .summary-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .summary-row {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 4px 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--vscode-editor-background) 90%, transparent), color-mix(in srgb, var(--vscode-editor-background) 82%, transparent));
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+      }
+      .summary-label {
+        color: var(--vscode-descriptionForeground);
+        font-size: 12px;
+        line-height: 1.6;
+        align-self: start;
+      }
+      .summary-value {
+        font-weight: 600;
+        line-height: 1.45;
+      }
+      .summary-detail {
+        grid-column: 2;
+        color: var(--vscode-descriptionForeground);
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .tone-success .summary-value { color: var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen)); }
+      .tone-error .summary-value { color: var(--vscode-testing-iconFailed, var(--vscode-errorForeground)); }
+      .tone-warning .summary-value { color: var(--vscode-testing-iconQueued, var(--vscode-terminal-ansiYellow)); }
+      .tone-muted .summary-value { color: var(--vscode-descriptionForeground); }
+      .action-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .action-grid .action-button {
+        width: 100%;
+        justify-content: center;
+      }
+      .text-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-top: 14px;
+      }
+      .text-action {
+        border: none;
+        padding: 0;
+        background: transparent;
+        color: var(--vscode-textLink-foreground);
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .text-action:hover {
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+      }
+      .text-action.disabled {
+        color: var(--vscode-disabledForeground);
+        cursor: not-allowed;
+      }
     </style>
   </head>
   <body>
@@ -217,7 +312,6 @@ function renderSidebarHtml(model: {
           <button class="action-button primary" data-educoder-command="educoderLocalOj.syncCollectionPackages">一键同步本章</button>
           <button class="action-button" data-educoder-command="educoderLocalOj.selectRootFolder">更换存放目录</button>
           <button class="action-button" data-educoder-command="educoderLocalOj.openTask">选择/打开题目</button>
-          <button class="action-button" data-educoder-refresh="true">刷新状态</button>
         </div>
         <div class="tips">
           <p class="muted">首次点击会自动询问存放目录；之后可以随时点击“更换存放目录”切换位置。</p>
@@ -230,11 +324,6 @@ function renderSidebarHtml(model: {
       document.addEventListener('click', (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement) || !vscode) {
-          return;
-        }
-        const refreshButton = target.closest('[data-educoder-refresh]');
-        if (refreshButton instanceof HTMLElement) {
-          vscode.postMessage({ type: 'refresh' });
           return;
         }
         const button = target.closest('[data-educoder-command]');

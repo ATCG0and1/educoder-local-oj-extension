@@ -33,7 +33,7 @@ describe('dashboard sidebar provider', () => {
     expect(view.webview.html).not.toContain('同步章节目录');
     expect(view.webview.html).toContain('更换存放目录');
     expect(view.webview.html).toContain('选择/打开题目');
-    expect(view.webview.html).toContain('刷新状态');
+    expect(view.webview.html).not.toContain('刷新状态');
     expect(view.webview.html).toContain('粘贴头哥章节链接后，一键同步本章全部题目包并自动打开第一题');
   });
 

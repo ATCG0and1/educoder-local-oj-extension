@@ -53,7 +53,7 @@ describe('dashboard panel message handling', () => {
     expect(panel.webview.html).toContain('运行测试');
     expect(panel.webview.html).toContain('提交评测');
     expect(panel.webview.html).toContain('测试集');
-    expect(panel.webview.html).toContain('答案');
+    expect(panel.webview.html).toContain('打开答案');
     expect(panel.webview.html).not.toContain('资料完整度');
     expect(panel.webview.html).not.toContain('题面：已就绪');
     expect(panel.webview.html).not.toContain('答案：缺失');

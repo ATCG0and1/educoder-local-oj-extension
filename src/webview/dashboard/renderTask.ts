@@ -3,14 +3,14 @@ import type { TaskOfficialJudgeSummary, TaskStateModel } from '../../core/ui/sta
 export function renderTask(model: TaskStateModel, taskRoot?: string): string {
   const taskTitle = escapeHtml(model.displayTitle ?? model.taskName ?? model.taskId ?? '未选择任务');
   const solveState = escapeHtml(model.solveState ?? model.state);
-  const officialSummary = formatOfficialJudgeSummary(model.officialJudge);
+  const officialSummary = formatOfficialJudgeSummary(model);
   const localSummary = formatLocalJudgeSummary(model);
 
   return `
     <section class="task-card task-card--compact">
       <div class="eyebrow">当前题目</div>
       <h2>${taskTitle}</h2>
-      <p>做题状态：${solveState}</p>
+      <p class="task-status">做题状态：${solveState}</p>
       <div class="summary-list">
         ${renderSummaryRow('头哥结果', officialSummary.headline, officialSummary.tone, officialSummary.detail)}
         ${renderSummaryRow('本地结果', localSummary.headline, localSummary.tone, localSummary.detail)}
@@ -23,7 +23,7 @@ export function renderTask(model: TaskStateModel, taskRoot?: string): string {
       </div>
       <div class="text-actions" aria-label="做题资料">
         ${renderTextAction('测试集', 'educoderLocalOj.openTaskTests', taskRoot)}
-        ${renderTextAction('答案', 'educoderLocalOj.openTaskAnswers', taskRoot)}
+        ${renderTextAction('打开答案', 'educoderLocalOj.openTaskAnswers', taskRoot)}
         ${model.localJudge?.failureInputPath
           ? renderTextAction('失败输入', 'educoderLocalOj.openLatestFailureInput', taskRoot)
           : ''}
@@ -109,13 +109,27 @@ function renderActionButton(
 }
 
 function formatOfficialJudgeSummary(
-  officialJudge?: TaskOfficialJudgeSummary,
+  model: TaskStateModel,
 ): {
   headline: string;
   detail?: string;
   tone: 'success' | 'error' | 'warning' | 'muted';
 } {
+  const officialJudge = model.officialJudge;
   if (!officialJudge) {
+    if (
+      model.localJudge &&
+      model.localJudge.compileVerdict === 'compiled' &&
+      model.localJudge.total > 0 &&
+      model.localJudge.failed === 0
+    ) {
+      return {
+        headline: '待提交',
+        detail: '本地已通过，可提交到头哥',
+        tone: 'warning',
+      };
+    }
+
     return {
       headline: '未提交',
       tone: 'muted',

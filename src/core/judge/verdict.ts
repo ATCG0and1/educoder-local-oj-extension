@@ -16,5 +16,19 @@ export function classifyCaseVerdict(input: ClassifyCaseVerdictInput): LocalCaseV
     return 'runtime_error';
   }
 
-  return input.expected === input.actual ? 'passed' : 'failed';
+  return normalizeJudgeText(input.expected) === normalizeJudgeText(input.actual) ? 'passed' : 'failed';
+}
+
+function normalizeJudgeText(value: string): string {
+  const lines = value
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/g, ''));
+
+  while (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+
+  return lines.join('\n');
 }
