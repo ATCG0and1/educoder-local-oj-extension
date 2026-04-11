@@ -1,6 +1,7 @@
-import { access, readFile, readdir } from 'node:fs/promises';
+import { access, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as vscode from 'vscode';
+import { normalizeStatementMarkdownForPreview } from '../core/content/markdownPreview.js';
 import { normalizeSafeRelativeFilePath } from '../core/workspace/workspaceInit.js';
 import { resolveTaskPackagePaths } from '../core/workspace/taskPackageMigration.js';
 
@@ -38,6 +39,7 @@ export async function openTaskStatementCommand(
 ): Promise<OpenTaskMaterialResult> {
   const targetPath = await resolveTaskStatementPath(taskRoot);
   if (targetPath.toLowerCase().endsWith('.md')) {
+    await normalizeMarkdownFileInPlace(targetPath, normalizeStatementMarkdownForPreview);
     await (deps.previewMarkdown ?? defaultPreviewMarkdown)(targetPath);
     return { openedPath: targetPath };
   }
@@ -203,6 +205,21 @@ async function defaultShowTextDocument(
 
 async function defaultPreviewMarkdown(targetPath: string): Promise<unknown> {
   return vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(targetPath));
+}
+
+async function normalizeMarkdownFileInPlace(
+  targetPath: string,
+  normalize: (content: string) => string,
+): Promise<void> {
+  try {
+    const original = await readFile(targetPath, 'utf8');
+    const next = normalize(original);
+    if (next !== original) {
+      await writeFile(targetPath, next, 'utf8');
+    }
+  } catch {
+    // Best-effort only: preview normalization should never block opening the target file.
+  }
 }
 
 async function pathExists(targetPath: string): Promise<boolean> {

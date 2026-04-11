@@ -19,6 +19,7 @@ import {
   writeRecoveryMetadata,
   type RecoveryMetadata,
 } from '../recovery/materialStore.js';
+import { normalizeAnswerMarkdownForPreview } from '../content/markdownPreview.js';
 import { writeRepositorySnapshot } from '../recovery/repositoryStore.js';
 import { syncProblemStatement } from './problemStatementSync.js';
 import { getTaskLayoutPaths, type TaskLayoutPaths } from '../workspace/directoryLayout.js';
@@ -334,7 +335,7 @@ function materializeUnlockedAnswerFiles(unlockedAnswers: UnlockedAnswerContent[]
     .filter((entry) => entry.unlocked && entry.content.length > 0)
     .map((entry) => ({
       path: `answer-${entry.answerId}.md`,
-      content: entry.content,
+      content: normalizeAnswerMarkdownForPreview(entry.content),
     }));
 }
 

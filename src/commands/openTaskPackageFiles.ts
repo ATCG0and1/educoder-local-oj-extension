@@ -1,6 +1,7 @@
-import { access, readdir, stat } from 'node:fs/promises';
+import { access, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as vscode from 'vscode';
+import { normalizeAnswerMarkdownForPreview } from '../core/content/markdownPreview.js';
 import { readLocalJudgeReport } from '../core/judge/resultStore.js';
 import { resolveTaskPackagePaths } from '../core/workspace/taskPackageMigration.js';
 import { revealInExplorer as defaultRevealInExplorer } from '../core/workspace/workspaceBinding.js';
@@ -87,6 +88,9 @@ async function openFilePath(
   targetPath: string,
   deps: OpenTaskPackageFileDeps,
 ): Promise<OpenTaskPackageFileResult> {
+  if (targetPath.toLowerCase().endsWith('.md')) {
+    await normalizeMarkdownFileInPlace(targetPath, normalizeAnswerMarkdownForPreview);
+  }
   const document = await (deps.openTextDocument ?? defaultOpenTextDocument)(targetPath);
   await (deps.showTextDocument ?? defaultShowTextDocument)(document);
   return {
@@ -133,4 +137,19 @@ async function resolveLatestFailedCase(
 ): Promise<{ inputPath?: string; outputPath?: string } | undefined> {
   const report = await readLocalJudgeReport(taskRoot);
   return report?.caseResults.find((item) => item.verdict !== 'passed');
+}
+
+async function normalizeMarkdownFileInPlace(
+  targetPath: string,
+  normalize: (content: string) => string,
+): Promise<void> {
+  try {
+    const original = await readFile(targetPath, 'utf8');
+    const next = normalize(original);
+    if (next !== original) {
+      await writeFile(targetPath, next, 'utf8');
+    }
+  } catch {
+    // Best-effort only: normalization should not block opening answer markdown.
+  }
 }

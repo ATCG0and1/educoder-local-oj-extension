@@ -50,6 +50,28 @@ describe('open task materials commands', () => {
     await expect(readFile(result.openedPath, 'utf8')).resolves.toContain('# 题面');
   });
 
+  it('normalizes markdown statement sample blocks before previewing the statement', async () => {
+    const taskRoot = await createTempTaskRoot();
+    const statementPath = path.join(taskRoot, 'problem', 'statement.md');
+    await mkdir(path.dirname(statementPath), { recursive: true });
+    await writeFile(
+      statementPath,
+      ['## 样例数据', '【样例输入】', '5 3', '1 0 2 1 3 2 4 3 3 6', '3 0 2 4 5 6', '', '【样例输出】', '4+2x'].join(
+        '\n',
+      ),
+      'utf8',
+    );
+
+    const previewMarkdown = vi.fn(async (_targetPath: string) => undefined);
+
+    await openTaskStatementCommand(taskRoot, {
+      previewMarkdown,
+    });
+
+    await expect(readFile(statementPath, 'utf8')).resolves.toContain('```text');
+    expect(previewMarkdown).toHaveBeenCalledWith(statementPath);
+  });
+
   it('opens the first editable file from code/current using task metadata preference', async () => {
     const taskRoot = await createTempTaskRoot();
     const preferredFile = path.join(taskRoot, 'code', 'current', 'src', 'main.cpp');
@@ -249,6 +271,31 @@ describe('open task materials commands', () => {
       openedKind: 'directory',
     });
     expect(revealInExplorer).toHaveBeenCalledWith(answersDir);
+  });
+
+  it('normalizes raw code answers before opening them so markdown preview keeps the original line breaks', async () => {
+    const taskRoot = await createTempTaskRoot();
+    const answerPath = path.join(taskRoot, 'answers', 'answer-3567563.md');
+    await mkdir(path.dirname(answerPath), { recursive: true });
+    await writeFile(
+      answerPath,
+      ['void change_vector(vector<string> &stu,int n,int m)', '{', '    int k=0;', '}'].join('\n'),
+      'utf8',
+    );
+
+    const openTextDocument = vi.fn(async (targetPath: string) => ({ targetPath }));
+    const showTextDocument = vi.fn(async (document: { targetPath: string }) => document);
+
+    const result = await openTaskAnswersCommand(taskRoot, {
+      openTextDocument,
+      showTextDocument,
+    });
+
+    expect(result).toMatchObject({
+      openedPath: answerPath,
+      openedKind: 'file',
+    });
+    await expect(readFile(answerPath, 'utf8')).resolves.toContain('```cpp');
   });
 
   it('opens the latest failed input/output files from the persisted local judge result', async () => {

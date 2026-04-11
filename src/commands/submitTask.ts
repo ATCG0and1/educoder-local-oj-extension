@@ -69,7 +69,7 @@ async function notifySubmitTaskResult(
       report.local.compileVerdict === 'compile_error'
         ? '编译失败'
         : `未通过 ${report.local.passedCount ?? 0}/${report.local.total ?? 0}`;
-    await window.showErrorMessage(`本地测试未通过，未提交到头哥：${reason}`);
+    void window.showErrorMessage(`本地测试未通过，未提交到头哥：${reason}`);
     return;
   }
 
@@ -82,11 +82,11 @@ async function notifySubmitTaskResult(
   const messageText = messageParts.join(' · ');
 
   if (report.remote.verdict === 'passed') {
-    await window.showInformationMessage(messageText);
+    void window.showInformationMessage(messageText);
     return;
   }
 
-  await window.showErrorMessage(messageText);
+  void window.showErrorMessage(messageText);
 }
 
 function formatRemoteJudgeHeadline(report: SubmitTaskReport): string {

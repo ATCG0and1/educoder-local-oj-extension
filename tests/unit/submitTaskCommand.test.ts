@@ -130,4 +130,52 @@ describe('submitTaskCommand', () => {
     expect(showErrorMessage).toHaveBeenCalledTimes(1);
     expect((showErrorMessage.mock.calls as string[][])[0]?.[0]).not.toContain('60 分');
   });
+
+  it('does not wait for notification dismissal before resolving submit results', async () => {
+    const showInformationMessage = vi.fn(() => new Promise<unknown>(() => undefined));
+    const showErrorMessage = vi.fn(async () => undefined);
+
+    await expect(
+      Promise.race([
+        submitTaskCommand('C:/task', {
+          workspace: { saveAll: vi.fn(async () => true) },
+          runLocalJudge: async () => ({
+            source: 'tests/all',
+            workspacePath: 'code/current',
+            runMode: 'full',
+            compile: {
+              verdict: 'compiled',
+              stdout: '',
+              stderr: '',
+              executablePath: 'C:/task/code/current/app.exe',
+            },
+            caseResults: [],
+            summary: {
+              total: 1,
+              passed: 1,
+              failed: 0,
+            },
+          }),
+          runRemoteJudge: async () => ({
+            source: 'remote',
+            codeHash: 'hash-3',
+            generatedAt: new Date().toISOString(),
+            summary: {
+              verdict: 'passed',
+              score: 100,
+              passedCount: 1,
+              totalCount: 1,
+              message: 'Accepted',
+              rawLogPath: path.join('C:/task', '_educoder', 'judge', 'remote_runs', 'latest.json'),
+            },
+          }),
+          window: {
+            showInformationMessage,
+            showErrorMessage,
+          },
+        }).then(() => 'resolved'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 50)),
+      ]),
+    ).resolves.toBe('resolved');
+  });
 });

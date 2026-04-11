@@ -1,7 +1,7 @@
 {
   "name": "educoder-local-oj-extension",
   "displayName": "Educoder Local OJ Extension",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "description": "Sync Educoder shixun_homework collections into a local OJ workflow inside VS Code.",
   "publisher": "young-lab",

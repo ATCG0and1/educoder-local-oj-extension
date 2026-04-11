@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AnswerFetchClientLike, AnswerInfoSummary } from '../core/api/answerFetchClient.js';
+import { normalizeAnswerMarkdownForPreview } from '../core/content/markdownPreview.js';
 import {
   readRecoveryMetadata,
   writeRecoveryMetadata,
@@ -58,7 +59,13 @@ async function writeAnswerArtifacts(
   await Promise.all(
     unlockedAnswers
       .filter((entry) => entry.unlocked)
-      .map((entry) => writeFile(path.join(answerDir, `answer-${entry.answerId}.md`), entry.content, 'utf8')),
+      .map((entry) =>
+        writeFile(
+          path.join(answerDir, `answer-${entry.answerId}.md`),
+          normalizeAnswerMarkdownForPreview(entry.content),
+          'utf8',
+        ),
+      ),
   );
 }
 

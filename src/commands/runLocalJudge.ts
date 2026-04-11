@@ -48,7 +48,7 @@ async function notifyLocalJudgeResult(
       firstNonEmptyLine(report.compile.stderr) ??
       firstNonEmptyLine(report.compile.stdout) ??
       '请检查编译输出。';
-    await window.showErrorMessage(`本地结果：编译失败 · ${detail}`);
+    void window.showErrorMessage(`本地结果：编译失败 · ${detail}`);
     return;
   }
 
@@ -61,11 +61,11 @@ async function notifyLocalJudgeResult(
       firstFailed?.inputPath && firstFailed?.outputPath
         ? ' · 可直接查看失败输入/输出。'
         : ' · 请查看失败详情。';
-    await window.showErrorMessage(`本地结果：${failedLabel}${guidance}`);
+    void window.showErrorMessage(`本地结果：${failedLabel}${guidance}`);
     return;
   }
 
-  await window.showInformationMessage(`本地结果：通过 ${report.summary.passed}/${report.summary.total}`);
+  void window.showInformationMessage(`本地结果：通过 ${report.summary.passed}/${report.summary.total}`);
 }
 
 async function ensureWorkspaceSaved(

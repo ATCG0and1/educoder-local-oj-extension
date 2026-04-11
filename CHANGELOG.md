@@ -10,6 +10,14 @@ All notable changes to this project will be documented in this file.
 - added `AGENTS.md`, `CHANGELOG.md`, `.gitattributes`, and a release-state check script
 - removed internal compatibility wording from the public README
 
+## [0.0.3] - 2026-04-11
+
+### Fixed
+
+- normalized plain-code answer markdown into fenced code blocks so answer preview keeps line breaks instead of collapsing into one paragraph
+- normalized statement sample blocks before markdown preview so multi-line sample input and output render correctly in VS Code
+- stopped local-test and submit notifications from blocking the dashboard progress indicator until the toast is dismissed
+
 ## [0.0.2] - 2026-04-11
 
 ### Fixed

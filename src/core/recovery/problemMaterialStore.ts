@@ -1,6 +1,7 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProblemMaterial } from '../api/problemFetchClient.js';
+import { normalizeStatementMarkdownForPreview } from '../content/markdownPreview.js';
 import type { TaskLayoutPaths } from '../workspace/directoryLayout.js';
 
 export async function writeProblemMaterial(
@@ -35,7 +36,13 @@ export async function writeProblemMaterial(
   ];
 
   if (material.statementMarkdown) {
-    writes.push(writeFile(layout.statementMarkdownPath, material.statementMarkdown, 'utf8'));
+    writes.push(
+      writeFile(
+        layout.statementMarkdownPath,
+        normalizeStatementMarkdownForPreview(material.statementMarkdown),
+        'utf8',
+      ),
+    );
   }
 
   if (material.statementHtml) {

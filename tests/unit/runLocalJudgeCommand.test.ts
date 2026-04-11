@@ -153,6 +153,42 @@ describe('runLocalJudgeCommand', () => {
     expect(showInformationMessage).toHaveBeenCalledWith('本地结果：通过 2/2');
   });
 
+  it('does not wait for success notifications to be dismissed before resolving the command', async () => {
+    const showInformationMessage = vi.fn(() => new Promise<unknown>(() => undefined));
+    const showErrorMessage = vi.fn(async () => undefined);
+
+    await expect(
+      Promise.race([
+        runLocalJudgeCommand('C:/task', {
+          notify: true,
+          saveBeforeRun: false,
+          runLocalJudge: async () => ({
+            source: 'tests/all',
+            workspacePath: 'code/current',
+            runMode: 'full',
+            compile: {
+              verdict: 'compiled',
+              stdout: '',
+              stderr: '',
+              executablePath: 'C:/task/code/current/app.exe',
+            },
+            caseResults: [],
+            summary: {
+              total: 2,
+              passed: 2,
+              failed: 0,
+            },
+          }),
+          window: {
+            showInformationMessage,
+            showErrorMessage,
+          },
+        }).then(() => 'resolved'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 50)),
+      ]),
+    ).resolves.toBe('resolved');
+  });
+
   it('fails loudly when current code cannot be saved before local evaluation', async () => {
     const saveAll = vi.fn(async () => false);
     const runLocalJudge = vi.fn();
