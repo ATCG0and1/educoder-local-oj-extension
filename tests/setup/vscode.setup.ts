@@ -7,6 +7,7 @@ const clipboardReadText = vi.fn(async () => '');
 const showOpenDialog = vi.fn(async () => undefined);
 const showInputBox = vi.fn(async (options?: { value?: string }) => options?.value);
 const showQuickPick = vi.fn(async () => undefined);
+const showWarningMessage = vi.fn(async () => undefined);
 const showErrorMessage = vi.fn(async () => undefined);
 const showInformationMessage = vi.fn(async () => undefined);
 const saveAll = vi.fn(async () => true);
@@ -168,6 +169,8 @@ function resetMockState(): void {
   showInputBox.mockImplementation(async (options?: { value?: string }) => options?.value);
   showQuickPick.mockReset();
   showQuickPick.mockResolvedValue(undefined);
+  showWarningMessage.mockReset();
+  showWarningMessage.mockResolvedValue(undefined);
   showErrorMessage.mockReset();
   showErrorMessage.mockResolvedValue(undefined);
   showInformationMessage.mockReset();
@@ -255,6 +258,7 @@ vi.mock('vscode', () => ({
     showOpenDialog,
     showInputBox,
     showQuickPick,
+    showWarningMessage,
     showErrorMessage,
     showInformationMessage,
     showTextDocument,
@@ -296,6 +300,7 @@ vi.mock('vscode', () => ({
     showOpenDialog,
     showInputBox,
     showQuickPick,
+    showWarningMessage,
     showErrorMessage,
     showInformationMessage,
     saveAll,

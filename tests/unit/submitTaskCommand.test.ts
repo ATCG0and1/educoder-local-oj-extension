@@ -131,6 +131,62 @@ describe('submitTaskCommand', () => {
     expect((showErrorMessage.mock.calls as string[][])[0]?.[0]).not.toContain('60 分');
   });
 
+  it('asks for confirmation before submitting to Educoder when local tests fail', async () => {
+    const showWarningMessage = vi.fn(async () => '继续提交');
+    const showInformationMessage = vi.fn(async () => undefined);
+    const showErrorMessage = vi.fn(async () => undefined);
+    const runRemoteJudge = vi.fn(async () => ({
+      source: 'remote' as const,
+      codeHash: 'hash-confirmed-submit',
+      generatedAt: new Date().toISOString(),
+      summary: {
+        verdict: 'passed' as const,
+        score: 100,
+        passedCount: 1,
+        totalCount: 1,
+        message: 'Accepted',
+        rawLogPath: path.join('C:/task', '_educoder', 'judge', 'remote_runs', 'latest.json'),
+      },
+    }));
+
+    const result = await submitTaskCommand('C:/task', {
+      workspace: { saveAll: vi.fn(async () => true) },
+      runLocalJudge: async () => ({
+        source: 'tests/all',
+        workspacePath: 'code/current',
+        runMode: 'full',
+        compile: {
+          verdict: 'compiled',
+          stdout: '',
+          stderr: '',
+          executablePath: 'C:/task/code/current/app.exe',
+        },
+        caseResults: [],
+        summary: {
+          total: 1,
+          passed: 0,
+          failed: 1,
+        },
+      }),
+      runRemoteJudge,
+      window: {
+        showWarningMessage,
+        showInformationMessage,
+        showErrorMessage,
+      },
+    });
+
+    expect(showWarningMessage).toHaveBeenCalledWith(
+      '本地测试未通过（未通过 0/1），仍要提交到头哥吗？',
+      '继续提交',
+      '取消',
+    );
+    expect(runRemoteJudge).toHaveBeenCalledWith({ force: false });
+    expect(result.decision).toBe('submitted_after_local_failure');
+    expect(showInformationMessage).toHaveBeenCalledWith('已提交到头哥：已通过 1/1 · Accepted');
+    expect(showErrorMessage).not.toHaveBeenCalled();
+  });
+
   it('does not wait for notification dismissal before resolving submit results', async () => {
     const showInformationMessage = vi.fn(() => new Promise<unknown>(() => undefined));
     const showErrorMessage = vi.fn(async () => undefined);
@@ -174,7 +230,7 @@ describe('submitTaskCommand', () => {
             showErrorMessage,
           },
         }).then(() => 'resolved'),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 50)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 250)),
       ]),
     ).resolves.toBe('resolved');
   });

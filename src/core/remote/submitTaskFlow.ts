@@ -28,21 +28,32 @@ export interface SubmitTaskReport {
     message?: string;
     reportPath?: string;
   };
-  decision: 'stopped_after_local_failure' | 'submitted_after_local_pass' | 'force_submitted';
+  decision:
+    | 'stopped_after_local_failure'
+    | 'submitted_after_local_failure'
+    | 'submitted_after_local_pass'
+    | 'force_submitted';
 }
 
 export interface SubmitTaskFlowInput {
   taskRoot: string;
   force?: boolean;
   runLocalJudge: () => Promise<LocalJudgeReport>;
+  confirmContinueAfterLocalFailure?: (
+    localReport: LocalJudgeReport,
+  ) => Promise<boolean> | boolean;
   runRemoteJudge: (input: { force: boolean }) => Promise<OfficialJudgeReport>;
 }
 
 export async function submitTaskFlow(input: SubmitTaskFlowInput): Promise<SubmitTaskReport> {
   const localReport = await input.runLocalJudge();
   const localPassed = isLocalJudgePassed(localReport);
+  const shouldContinueAfterLocalFailure =
+    !localPassed &&
+    !input.force &&
+    Boolean(await input.confirmContinueAfterLocalFailure?.(localReport));
 
-  if (!localPassed && !input.force) {
+  if (!localPassed && !input.force && !shouldContinueAfterLocalFailure) {
     return persistSubmitTaskReport(input.taskRoot, {
       generatedAt: new Date().toISOString(),
       local: {
@@ -86,7 +97,11 @@ export async function submitTaskFlow(input: SubmitTaskFlowInput): Promise<Submit
       message: remoteReport.summary.message,
       reportPath: remoteReport.summary.rawLogPath,
     },
-    decision: input.force ? 'force_submitted' : 'submitted_after_local_pass',
+    decision: input.force
+      ? 'force_submitted'
+      : localPassed
+        ? 'submitted_after_local_pass'
+        : 'submitted_after_local_failure',
   });
 }
 

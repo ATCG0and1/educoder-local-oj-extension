@@ -119,6 +119,17 @@ function formatOfficialJudgeSummary(
   if (!officialJudge) {
     if (
       model.localJudge &&
+      (model.localJudge.compileVerdict === 'compile_error' || model.localJudge.failed > 0)
+    ) {
+      return {
+        headline: '未提交',
+        detail: '本地未通过，仍可提交到头哥（会二次确认）',
+        tone: 'warning',
+      };
+    }
+
+    if (
+      model.localJudge &&
       model.localJudge.compileVerdict === 'compiled' &&
       model.localJudge.total > 0 &&
       model.localJudge.failed === 0

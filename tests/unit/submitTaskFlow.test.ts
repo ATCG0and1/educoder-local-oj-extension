@@ -60,6 +60,63 @@ describe('submitTaskFlow', () => {
     await expect(access(path.join(taskRoot, '_educoder', 'judge', 'submit_runs'))).rejects.toBeDefined();
   });
 
+  it('continues to Educoder when local tests fail and the caller confirms the submit', async () => {
+    const taskRoot = await createTempTaskRoot();
+    const confirmContinueAfterLocalFailure = vi.fn(async () => true);
+    const runRemoteJudge = vi.fn(async () => ({
+      source: 'remote' as const,
+      codeHash: 'hash-confirmed-submit',
+      generatedAt: new Date().toISOString(),
+      summary: {
+        verdict: 'passed' as const,
+        score: 100,
+        passedCount: 1,
+        totalCount: 1,
+        message: 'Accepted',
+        rawLogPath: path.join(taskRoot, '_educoder', 'judge', 'remote_runs', 'latest.json'),
+      },
+    }));
+
+    const report = await submitTaskFlow({
+      taskRoot,
+      confirmContinueAfterLocalFailure,
+      runLocalJudge: async () => ({
+        source: 'tests/all',
+        runMode: 'full',
+        compile: {
+          verdict: 'compiled',
+          stdout: '',
+          stderr: '',
+        },
+        caseResults: [],
+        summary: {
+          total: 1,
+          passed: 0,
+          failed: 1,
+        },
+      }),
+      runRemoteJudge,
+    });
+
+    expect(confirmContinueAfterLocalFailure).toHaveBeenCalledTimes(1);
+    expect(report.decision).toBe('submitted_after_local_failure');
+    expect(report.local).toMatchObject({
+      executed: true,
+      passed: false,
+      total: 1,
+      passedCount: 0,
+      failedCount: 1,
+    });
+    expect(report.remote).toMatchObject({
+      executed: true,
+      verdict: 'passed',
+      passedCount: 1,
+      totalCount: 1,
+      message: 'Accepted',
+    });
+    expect(runRemoteJudge).toHaveBeenCalledWith({ force: false });
+  });
+
   it('submits to Educoder after local tests pass and persists a combined report', async () => {
     const taskRoot = await createTempTaskRoot();
     const runRemoteJudge = vi.fn(async () => ({

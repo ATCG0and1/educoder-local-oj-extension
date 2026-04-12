@@ -4,18 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Housekeeping
-
-- cleaned the local workspace promotion flow so the canonical repo can stay on the stable old path
-- added `AGENTS.md`, `CHANGELOG.md`, `.gitattributes`, and a release-state check script
-- removed internal compatibility wording from the public README
-
 ## [0.0.4] - 2026-04-12
 
 ### Fixed
 
 - made local compile failures prefer the first GCC-style `file:line:column: error: ...` block instead of showing only generic function-context lines
 - aligned local compile-failure summaries and explicit toast notifications so they both preserve the first code line and caret line from the compiler output
+- let `提交评测` continue after a local failure when the user explicitly confirms, while keeping `强制提交到头哥` as the separate force path
+- surfaced a clearer dashboard hint that local failures can still be submitted to Educoder with a confirmation step
+
+### Housekeeping
+
+- cleaned the local workspace promotion flow so the canonical repo can stay on the stable old path
+- added `AGENTS.md`, `CHANGELOG.md`, `.gitattributes`, and a release-state check script
+- removed internal compatibility wording from the public README
+- made `vitest` run in a single fork so the shared VS Code extension activation mock stays stable during release verification on Windows
 
 ## [0.0.3] - 2026-04-11
 

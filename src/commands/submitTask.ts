@@ -13,6 +13,9 @@ import type { OfficialJudgeReport } from '../core/remote/officialLogStore.js';
 import { getDefaultOfficialJudgeExecutor } from '../core/remote/officialJudgeExecutor.js';
 import { submitTaskFlow, type SubmitTaskReport } from '../core/remote/submitTaskFlow.js';
 
+const CONTINUE_SUBMIT_LABEL = '继续提交';
+const CANCEL_SUBMIT_LABEL = '取消';
+
 export interface SubmitTaskCommandDeps {
   force?: boolean;
   runLocalJudge?: () => Promise<LocalJudgeReport>;
@@ -24,6 +27,10 @@ export interface SubmitTaskCommandDeps {
     saveAll(includeUntitled?: boolean): PromiseLike<boolean> | Promise<boolean>;
   };
   window?: {
+    showWarningMessage?(
+      message: string,
+      ...items: string[]
+    ): PromiseLike<string | undefined> | Promise<string | undefined>;
     showInformationMessage(message: string): PromiseLike<unknown>;
     showErrorMessage(message: string): PromiseLike<unknown>;
   };
@@ -38,11 +45,15 @@ export async function submitTaskCommand(
     throw new Error('保存当前代码失败，已停止提交评测。');
   }
 
+  const window = deps.window ?? vscode.window;
   const report = await submitTaskFlow({
     taskRoot,
     force: deps.force,
     runLocalJudge:
       deps.runLocalJudge ?? (() => runLocalJudgeCommand(taskRoot, { notify: false, saveBeforeRun: false })),
+    confirmContinueAfterLocalFailure: deps.force
+      ? undefined
+      : (localReport) => confirmSubmitAfterLocalFailure(localReport, window),
     runRemoteJudge:
       deps.runRemoteJudge ??
       ((options) =>
@@ -53,8 +64,29 @@ export async function submitTaskCommand(
         )),
   });
 
-  await notifySubmitTaskResult(report, deps.window ?? vscode.window);
+  await notifySubmitTaskResult(report, window);
   return report;
+}
+
+async function confirmSubmitAfterLocalFailure(
+  localReport: LocalJudgeReport,
+  window: {
+    showWarningMessage?(
+      message: string,
+      ...items: string[]
+    ): PromiseLike<string | undefined> | Promise<string | undefined>;
+  },
+): Promise<boolean> {
+  if (!window.showWarningMessage) {
+    return false;
+  }
+
+  const choice = await window.showWarningMessage(
+    `本地测试未通过（${formatLocalFailureReason(localReport)}），仍要提交到头哥吗？`,
+    CONTINUE_SUBMIT_LABEL,
+    CANCEL_SUBMIT_LABEL,
+  );
+  return choice === CONTINUE_SUBMIT_LABEL;
 }
 
 async function notifySubmitTaskResult(
@@ -65,11 +97,7 @@ async function notifySubmitTaskResult(
   },
 ): Promise<void> {
   if (report.decision === 'stopped_after_local_failure') {
-    const reason =
-      report.local.compileVerdict === 'compile_error'
-        ? '编译失败'
-        : `未通过 ${report.local.passedCount ?? 0}/${report.local.total ?? 0}`;
-    void window.showErrorMessage(`本地测试未通过，未提交到头哥：${reason}`);
+    void window.showErrorMessage(`本地测试未通过，未提交到头哥：${formatStoppedLocalFailureReason(report)}`);
     return;
   }
 
@@ -87,6 +115,18 @@ async function notifySubmitTaskResult(
   }
 
   void window.showErrorMessage(messageText);
+}
+
+function formatLocalFailureReason(localReport: LocalJudgeReport): string {
+  return localReport.compile.verdict === 'compile_error'
+    ? '编译失败'
+    : `未通过 ${localReport.summary.passed}/${localReport.summary.total}`;
+}
+
+function formatStoppedLocalFailureReason(report: SubmitTaskReport): string {
+  return report.local.compileVerdict === 'compile_error'
+    ? '编译失败'
+    : `未通过 ${report.local.passedCount ?? 0}/${report.local.total ?? 0}`;
 }
 
 function formatRemoteJudgeHeadline(report: SubmitTaskReport): string {

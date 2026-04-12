@@ -520,7 +520,76 @@ describe('command registration', () => {
     });
     expect(vscodeMock.saveAll).toHaveBeenCalledTimes(1);
     expect(runRemoteJudge).not.toHaveBeenCalled();
+    expect(vscodeMock.showWarningMessage).toHaveBeenCalledWith(
+      '本地测试未通过（编译失败），仍要提交到头哥吗？',
+      '继续提交',
+      '取消',
+    );
     expect(vscodeMock.showErrorMessage).toHaveBeenCalledWith('本地测试未通过，未提交到头哥：编译失败');
+  });
+
+  it('submits to Educoder after an explicit confirmation even when local tests fail', async () => {
+    const vscodeMock = (vscode as any).__mock;
+    const taskRoot = await createTempTaskRoot();
+    const runRemoteJudge = vi.fn(async () => ({
+      source: 'remote' as const,
+      codeHash: 'hash-confirmed-submit',
+      generatedAt: new Date().toISOString(),
+      summary: {
+        verdict: 'passed' as const,
+        score: 100,
+        passedCount: 1,
+        totalCount: 1,
+        message: 'Accepted',
+        rawLogPath: path.join(String(taskRoot), '_educoder', 'judge', 'remote_runs', 'latest.json'),
+      },
+    }));
+
+    vscodeMock.showWarningMessage.mockResolvedValue('继续提交');
+
+    configureCommandService('educoderLocalOj.submitTask', (root) =>
+      submitTaskCommand(String(root), {
+        runLocalJudge: async () => ({
+          source: 'tests/all',
+          runMode: 'full',
+          compile: {
+            verdict: 'compiled',
+            stdout: '',
+            stderr: '',
+            executablePath: path.join(String(root), 'app.exe'),
+          },
+          caseResults: [],
+          summary: {
+            total: 1,
+            passed: 0,
+            failed: 1,
+          },
+        }),
+        runRemoteJudge,
+      }),
+    );
+
+    const result = await vscode.commands.executeCommand('educoderLocalOj.submitTask', taskRoot);
+
+    expect(result).toMatchObject({
+      decision: 'submitted_after_local_failure',
+      local: {
+        passed: false,
+      },
+      remote: {
+        executed: true,
+        verdict: 'passed',
+        passedCount: 1,
+        totalCount: 1,
+      },
+    });
+    expect(runRemoteJudge).toHaveBeenCalledWith({ force: false });
+    expect(vscodeMock.showWarningMessage).toHaveBeenCalledWith(
+      '本地测试未通过（未通过 0/1），仍要提交到头哥吗？',
+      '继续提交',
+      '取消',
+    );
+    expect(vscodeMock.showInformationMessage).toHaveBeenCalledWith('已提交到头哥：已通过 1/1 · Accepted');
   });
 
   it('shows an explicit submit result message when Educoder returns a verdict', async () => {
