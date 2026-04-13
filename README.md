@@ -108,6 +108,7 @@ npm run package:vsix
 - `Educoder Local OJ: 选择/打开题目`
 - `Educoder Local OJ: 打开测试集`
 - `Educoder Local OJ: 打开答案`
+- `Educoder Local OJ: 打开完整编译报错`
 - `Educoder Local OJ: 运行本地测试`
 - `Educoder Local OJ: 提交评测（本地 + 头哥）`
 

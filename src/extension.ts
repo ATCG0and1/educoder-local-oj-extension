@@ -6,6 +6,7 @@ import { forceRunOfficialJudgeCommand } from './commands/forceRunOfficialJudge.j
 import { openTaskCommand } from './commands/openTask.js';
 import { openTaskInteractive } from './commands/openTaskInteractive.js';
 import {
+  openLatestCompileErrorCommand,
   openLatestFailureInputCommand,
   openLatestFailureOutputCommand,
   openTaskAnswersCommand,
@@ -68,6 +69,7 @@ const frozenCommands = [
   'educoderLocalOj.openCurrentCode',
   'educoderLocalOj.openTaskTests',
   'educoderLocalOj.openTaskAnswers',
+  'educoderLocalOj.openLatestCompileError',
   'educoderLocalOj.openLatestFailureInput',
   'educoderLocalOj.openLatestFailureOutput',
   'educoderLocalOj.runLocalJudge',
@@ -286,6 +288,10 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
     case 'educoderLocalOj.openTaskAnswers':
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
         openTaskAnswersCommand(requireTaskRoot(taskRoot)),
+      );
+    case 'educoderLocalOj.openLatestCompileError':
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
+        openLatestCompileErrorCommand(requireTaskRoot(taskRoot)),
       );
     case 'educoderLocalOj.openLatestFailureInput':
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>

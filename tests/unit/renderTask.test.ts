@@ -219,4 +219,48 @@ describe('renderTask', () => {
     expect(html).toContain('待提交');
     expect(html).toContain('本地已通过，可提交到头哥');
   });
+
+  it('shows a full compile-error action when the latest local result is compile_error', () => {
+    const html = renderTask(
+      {
+        taskId: 'fc7pz3fm6yjh',
+        taskName: '第1关 基本实训：链表操作',
+        displayTitle: '2-2 · 第1关 基本实训：链表操作',
+        state: '本地评测未过',
+        solveState: '本地测试未过',
+        availableStates: ['本地测试未过'],
+        readiness: 'local_ready',
+        hiddenTestsCached: true,
+        localCaseCount: 4,
+        materials: {
+          statement: 'ready',
+          template: 'ready',
+          currentCode: 'ready',
+          tests: 'ready',
+          answers: 'ready',
+          metadata: 'ready',
+        },
+        templateReady: true,
+        passedReady: false,
+        answerEntryCount: 0,
+        unlockedAnswerCount: 0,
+        repositoryReady: false,
+        repositoryFileCount: 0,
+        historyEntryCount: 1,
+        localJudge: {
+          source: 'tests/all',
+          compileVerdict: 'compile_error',
+          total: 0,
+          passed: 0,
+          failed: 0,
+          headline: '编译失败',
+          detail: 'test2.cpp:12:1: error: ...',
+        },
+      },
+      'C:/task-root',
+    );
+
+    expect(html).toContain('完整报错');
+    expect(html).toContain('data-educoder-command="educoderLocalOj.openLatestCompileError"');
+  });
 });

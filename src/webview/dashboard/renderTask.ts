@@ -24,6 +24,9 @@ export function renderTask(model: TaskStateModel, taskRoot?: string): string {
       <div class="text-actions" aria-label="做题资料">
         ${renderTextAction('测试集', 'educoderLocalOj.openTaskTests', taskRoot)}
         ${renderTextAction('打开答案', 'educoderLocalOj.openTaskAnswers', taskRoot)}
+        ${model.localJudge?.compileVerdict === 'compile_error'
+          ? renderTextAction('完整报错', 'educoderLocalOj.openLatestCompileError', taskRoot)
+          : ''}
         ${model.localJudge?.failureInputPath
           ? renderTextAction('失败输入', 'educoderLocalOj.openLatestFailureInput', taskRoot)
           : ''}

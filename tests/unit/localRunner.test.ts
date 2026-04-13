@@ -210,4 +210,89 @@ describe('runLocalJudge', () => {
       }),
     );
   });
+
+  it('treats known check.py-missing environment noise as a non-blocking trailing output mismatch', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'step1', 'head1.h'), '#pragma once\n');
+    await writeTextFile(path.join(taskRoot, 'tests', 'all', 'case_001_input.txt'), '1\n');
+    await writeTextFile(
+      path.join(taskRoot, 'tests', 'all', 'case_001_output.txt'),
+      '按顺序出列又逆序后的名字存储展示：Tony 小明\n',
+    );
+
+    const compileWorkspace = vi.fn(async ({ workspaceDir }: { workspaceDir: string }) => ({
+      success: true,
+      executablePath: path.join(workspaceDir, 'app.exe'),
+      stdout: '',
+      stderr: '',
+      sourceFiles: ['step1/read.cpp', 'step1/teacher.cpp'],
+    }));
+
+    const executeBinary = vi.fn(async () => ({
+      stdout: [
+        '按顺序出列又逆序后的名字存储展示：Tony 小明',
+        '您的算法时间复杂度处于一般阶段',
+        '您的算法时间复杂度处于优秀阶段',
+        '没有额外使用辅助空间',
+      ].join('\n') + '\n',
+      stderr:
+        "python: can't open file 'D:\\\\data\\\\workspace\\\\myshixun\\\\step1\\\\check.py': [Errno 2] No such file or directory\r\n",
+      exitCode: 0,
+      timedOut: false,
+    }));
+
+    const result = await runLocalJudge({
+      taskRoot,
+      compileWorkspace,
+      executeBinary,
+    });
+
+    expect(result.summary).toMatchObject({
+      total: 1,
+      passed: 1,
+      failed: 0,
+    });
+    expect(result.caseResults[0]?.verdict).toBe('passed');
+  });
+
+  it('keeps strict output comparison when trailing output noise is not a known local environment mismatch', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'step1', 'head1.h'), '#pragma once\n');
+    await writeTextFile(path.join(taskRoot, 'tests', 'all', 'case_001_input.txt'), '1\n');
+    await writeTextFile(
+      path.join(taskRoot, 'tests', 'all', 'case_001_output.txt'),
+      '按顺序出列又逆序后的名字存储展示：Tony 小明\n',
+    );
+
+    const compileWorkspace = vi.fn(async ({ workspaceDir }: { workspaceDir: string }) => ({
+      success: true,
+      executablePath: path.join(workspaceDir, 'app.exe'),
+      stdout: '',
+      stderr: '',
+      sourceFiles: ['step1/read.cpp', 'step1/teacher.cpp'],
+    }));
+
+    const executeBinary = vi.fn(async () => ({
+      stdout: [
+        '按顺序出列又逆序后的名字存储展示：Tony 小明',
+        'debug-extra-line',
+      ].join('\n') + '\n',
+      stderr: '',
+      exitCode: 0,
+      timedOut: false,
+    }));
+
+    const result = await runLocalJudge({
+      taskRoot,
+      compileWorkspace,
+      executeBinary,
+    });
+
+    expect(result.summary).toMatchObject({
+      total: 1,
+      passed: 0,
+      failed: 1,
+    });
+    expect(result.caseResults[0]?.verdict).toBe('failed');
+  });
 });

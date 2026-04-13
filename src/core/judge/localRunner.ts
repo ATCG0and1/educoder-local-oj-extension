@@ -51,6 +51,16 @@ interface HiddenCaseFile {
   reportOutputPath: string;
 }
 
+const KNOWN_ENV_MISSING_CHECKER_PATTERN =
+  /python:\s*can't open file\s+'[^']*myshixun[^']*check\.py'/i;
+
+const KNOWN_CHECKER_TRAILING_LINES = new Set([
+  '您的算法时间复杂度处于一般阶段',
+  '您的算法时间复杂度处于优秀阶段',
+  '没有额外使用辅助空间',
+  '额外使用了辅助空间',
+]);
+
 export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJudgeReport> {
   const resolvedPaths = await resolveTaskPackagePaths(input.taskRoot);
   const workspaceDir = resolvedPaths.currentCodeDir;
@@ -117,10 +127,16 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
       taskRoot: input.taskRoot,
     });
 
+    const normalizedActual = normalizeKnownEnvNoiseOutput({
+      expected,
+      actual: execution.stdout,
+      stderr: execution.stderr,
+    });
+
     const verdict = classifyCaseVerdict({
       exitCode: execution.exitCode,
       expected,
-      actual: execution.stdout,
+      actual: normalizedActual,
       timedOut: execution.timedOut,
     });
 
@@ -130,7 +146,7 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
       inputPath: hiddenCase.reportInputPath,
       outputPath: hiddenCase.reportOutputPath,
       expected,
-      actual: execution.stdout,
+      actual: normalizedActual,
       stdout: execution.stdout,
       stderr: execution.stderr,
       exitCode: execution.exitCode,
@@ -139,7 +155,7 @@ export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJud
         verdict === 'failed'
           ? renderSmartDiff({
               expected,
-              actual: execution.stdout,
+              actual: normalizedActual,
             })
           : [],
     });
@@ -264,6 +280,54 @@ async function discoverCaseFiles(caseDir: string, reportPrefix: string): Promise
 function normalizeReportPrefix(taskRoot: string, targetDir: string): string {
   const relative = path.relative(taskRoot, targetDir).replaceAll('\\', '/');
   return relative.length > 0 ? relative : 'tests/hidden-legacy';
+}
+
+function normalizeKnownEnvNoiseOutput(input: {
+  expected: string;
+  actual: string;
+  stderr: string;
+}): string {
+  if (!KNOWN_ENV_MISSING_CHECKER_PATTERN.test(input.stderr)) {
+    return input.actual;
+  }
+
+  const expectedLines = normalizeJudgeLines(input.expected);
+  const actualLines = normalizeJudgeLines(input.actual);
+
+  if (actualLines.length < expectedLines.length) {
+    return input.actual;
+  }
+
+  for (let index = 0; index < expectedLines.length; index += 1) {
+    if (actualLines[index] !== expectedLines[index]) {
+      return input.actual;
+    }
+  }
+
+  const trailingLines = actualLines.slice(expectedLines.length);
+  if (trailingLines.length === 0) {
+    return input.actual;
+  }
+
+  const isKnownTrailingNoise = trailingLines.every((line) =>
+    KNOWN_CHECKER_TRAILING_LINES.has(line.trim()),
+  );
+
+  return isKnownTrailingNoise ? input.expected : input.actual;
+}
+
+function normalizeJudgeLines(value: string): string[] {
+  const lines = value
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/g, ''));
+
+  while (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+
+  return lines;
 }
 
 function executeBinary(input: ExecuteBinaryInput): Promise<ExecuteBinaryResult> {

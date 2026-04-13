@@ -106,6 +106,7 @@ describe('stateModel', () => {
         taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
         hiddenTestsCached: true,
+        hiddenTestsCount: 4,
         materials: {
           statement: 'ready',
           template: 'ready',
@@ -130,6 +131,7 @@ describe('stateModel', () => {
         taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
         hiddenTestsCached: true,
+        hiddenTestsCount: 4,
         materials: {
           statement: 'ready',
           template: 'ready',
@@ -164,6 +166,7 @@ describe('stateModel', () => {
         taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
         hiddenTestsCached: true,
+        hiddenTestsCount: 4,
         materials: {
           statement: 'ready',
           template: 'ready',
@@ -191,7 +194,7 @@ describe('stateModel', () => {
         },
       }).localJudge,
     ).toMatchObject({
-      headline: '编译失败',
+      headline: '0/4 编译失败',
       detail: [
         'add/polynomial.cpp:15:11: error: expected `;` at end of member declaration',
         '    float coef// 系数',
@@ -204,6 +207,7 @@ describe('stateModel', () => {
         taskManifest: { taskId: 'task-1', name: 'Task 1', position: 1, folderName: '01 Task 1 [task-1]' },
         workspaceReady: true,
         hiddenTestsCached: true,
+        hiddenTestsCount: 4,
         materials: {
           statement: 'ready',
           template: 'ready',
@@ -226,7 +230,7 @@ describe('stateModel', () => {
         },
       }).localJudge,
     ).toMatchObject({
-      headline: '编译失败',
+      headline: '0/4 编译失败',
       detail: '请检查编译输出。',
     });
 

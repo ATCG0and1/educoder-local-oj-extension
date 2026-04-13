@@ -69,6 +69,7 @@ describe('command registration', () => {
     expect(commands).toContain('educoderLocalOj.openCurrentCode');
     expect(commands).toContain('educoderLocalOj.openTaskTests');
     expect(commands).toContain('educoderLocalOj.openTaskAnswers');
+    expect(commands).toContain('educoderLocalOj.openLatestCompileError');
     expect(commands).toContain('educoderLocalOj.openLatestFailureInput');
     expect(commands).toContain('educoderLocalOj.openLatestFailureOutput');
     expect(commands).not.toContain('educoderLocalOj.openTaskReadme');
@@ -138,6 +139,10 @@ describe('command registration', () => {
         expect.objectContaining({
           command: 'educoderLocalOj.openTaskAnswers',
           title: 'Educoder Local OJ: 打开答案',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.openLatestCompileError',
+          title: 'Educoder Local OJ: 打开完整编译报错',
         }),
         expect.objectContaining({
           command: 'educoderLocalOj.openLatestFailureInput',

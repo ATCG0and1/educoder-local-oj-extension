@@ -1,4 +1,4 @@
-import { access, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as vscode from 'vscode';
 import { normalizeAnswerMarkdownForPreview } from '../core/content/markdownPreview.js';
@@ -13,6 +13,8 @@ export const TASK_ANSWERS_REQUIRED_ERROR_MESSAGE =
   '当前题目还没有答案，请先同步答案。';
 export const TASK_FAILURE_CASE_REQUIRED_ERROR_MESSAGE =
   '最近一次本地测试没有可打开的失败用例，请先运行测试并确认存在失败输入/输出。';
+export const TASK_COMPILE_ERROR_REQUIRED_ERROR_MESSAGE =
+  '最近一次本地测试没有可打开的编译报错，请先运行本地测试并确认编译失败。';
 
 export interface OpenTaskPackageFileDeps {
   openTextDocument?: (targetPath: string) => Promise<any>;
@@ -84,6 +86,24 @@ export async function openLatestFailureOutputCommand(
   return openFilePath(path.join(taskRoot, ...firstFailed.outputPath.split('/')), deps);
 }
 
+export async function openLatestCompileErrorCommand(
+  taskRoot: string,
+  deps: OpenTaskPackageFileDeps = {},
+): Promise<OpenTaskPackageFileResult> {
+  const report = await readLocalJudgeReport(taskRoot);
+  if (!report || report.compile.verdict !== 'compile_error') {
+    throw new Error(TASK_COMPILE_ERROR_REQUIRED_ERROR_MESSAGE);
+  }
+
+  const totalCases = await countCanonicalLocalCases(taskRoot);
+  const logPath = path.join(taskRoot, '_educoder', 'judge', 'latest_compile_error.log');
+  const logContent = buildCompileErrorLog(report, totalCases);
+
+  await mkdir(path.dirname(logPath), { recursive: true });
+  await writeFile(logPath, logContent, 'utf8');
+  return openFilePath(logPath, deps);
+}
+
 async function openFilePath(
   targetPath: string,
   deps: OpenTaskPackageFileDeps,
@@ -137,6 +157,40 @@ async function resolveLatestFailedCase(
 ): Promise<{ inputPath?: string; outputPath?: string } | undefined> {
   const report = await readLocalJudgeReport(taskRoot);
   return report?.caseResults.find((item) => item.verdict !== 'passed');
+}
+
+async function countCanonicalLocalCases(taskRoot: string): Promise<number> {
+  try {
+    const entries = await readdir(path.join(taskRoot, 'tests', 'all'), { withFileTypes: true });
+    return entries.filter((entry) => entry.isFile() && entry.name.endsWith('_input.txt')).length;
+  } catch {
+    return 0;
+  }
+}
+
+function buildCompileErrorLog(
+  report: NonNullable<Awaited<ReturnType<typeof readLocalJudgeReport>>>,
+  totalCases: number,
+): string {
+  const sourceFiles = report.compile.sourceFiles ?? [];
+  const sourceSummary =
+    sourceFiles.length > 0
+      ? sourceFiles.map((item) => `- ${item}`).join('\n')
+      : '- (未记录源文件列表)';
+  const header = totalCases > 0 ? `0/${totalCases}` : '编译失败';
+
+  return [
+    `本地结果：${header}`,
+    '',
+    '【编译源文件】',
+    sourceSummary,
+    '',
+    '【stderr】',
+    report.compile.stderr.trim().length > 0 ? report.compile.stderr : '(空)',
+    '',
+    '【stdout】',
+    report.compile.stdout.trim().length > 0 ? report.compile.stdout : '(空)',
+  ].join('\n');
 }
 
 async function normalizeMarkdownFileInPlace(

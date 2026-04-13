@@ -121,7 +121,7 @@ export function buildTaskStateModel(input: TaskStateModelInput): TaskStateModel 
     repositoryReady: input.recoveryMetadata?.repositoryReady ?? false,
     repositoryFileCount: input.recoveryMetadata?.repositoryFileCount ?? 0,
     historyEntryCount: input.historyEntryCount ?? 0,
-    localJudge: resolveLocalJudgeSummary(input.localReport),
+    localJudge: resolveLocalJudgeSummary(input.localReport, localCaseCount),
     officialJudge: resolveOfficialJudgeSummary(input),
     lastRecoverySyncAt: input.recoveryMetadata?.updatedAt,
     lastRepositorySyncAt: input.recoveryMetadata?.lastRepositorySyncAt,
@@ -273,12 +273,15 @@ function resolveTaskMaterials(
   };
 }
 
-function resolveLocalJudgeSummary(localReport?: LocalJudgeReport): TaskLocalJudgeSummary | undefined {
+function resolveLocalJudgeSummary(
+  localReport?: LocalJudgeReport,
+  hiddenTestsCount?: number,
+): TaskLocalJudgeSummary | undefined {
   if (!localReport) {
     return undefined;
   }
 
-  const insight = buildLocalJudgeInsight(localReport);
+  const insight = buildLocalJudgeInsight(localReport, hiddenTestsCount);
   return {
     source: localReport.source ?? 'tests/all',
     compileVerdict: localReport.compile.verdict,
@@ -310,7 +313,7 @@ function resolveOfficialJudgeSummary(
   };
 }
 
-function buildLocalJudgeInsight(localReport: LocalJudgeReport): {
+function buildLocalJudgeInsight(localReport: LocalJudgeReport, hiddenTestsCount?: number): {
   headline?: string;
   detail?: string;
   failureCaseId?: string;
@@ -318,12 +321,16 @@ function buildLocalJudgeInsight(localReport: LocalJudgeReport): {
   failureOutputPath?: string;
 } {
   if (localReport.compile.verdict === 'compile_error') {
+    const compileFailedHeadline =
+      typeof hiddenTestsCount === 'number' && hiddenTestsCount > 0
+        ? `0/${hiddenTestsCount} 编译失败`
+        : '编译失败';
     const diagnosticBlock =
       extractFirstCompileDiagnosticBlock(localReport.compile.stderr) ??
       extractFirstCompileDiagnosticBlock(localReport.compile.stdout);
     const compileContext = diagnosticBlock ? undefined : summarizeCompileContext(localReport);
     return {
-      headline: '编译失败',
+      headline: compileFailedHeadline,
       detail:
         [
           diagnosticBlock ??

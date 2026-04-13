@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-04-13
+
+### Fixed
+
+- added a `完整报错` action in the task workbench so compile failures can open the full raw diagnostics directly from `_educoder/judge/latest_compile_error.log`
+- added an explicit `0/N` compile-failure headline in local summaries when hidden test counts are known, so compile failures match headguy-style result cues more closely
+- hardened local judging against environment-specific checker noise (e.g. missing `/data/workspace/myshixun/.../check.py`) so known auxiliary script mismatches no longer produce false local failures in header-based harness tasks
+
 ## [0.0.4] - 2026-04-12
 
 ### Fixed
