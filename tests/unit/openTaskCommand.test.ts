@@ -72,7 +72,7 @@ describe('openTaskCommand', () => {
     expect(openPanel).not.toHaveBeenCalled();
   });
 
-  it('backfills statement and answers in open mode while leaving template/passed to full sync', async () => {
+  it('backfills statement in open mode without auto-syncing answers while leaving template/passed to full sync', async () => {
     const taskRoot = await createTempTaskRoot();
     const collectionRoot = path.join(
       taskRoot,
@@ -151,35 +151,17 @@ describe('openTaskCommand', () => {
     const passedClient = {
       fetchPassedFiles: vi.fn(async () => [{ path: 'test1/tasks.h', content: 'accepted\n' }]),
     };
-    const answerClient = {
-      fetchAnswerInfo: vi.fn(async () => ({
-        status: 3,
-        entries: [{ answerId: 3567559, name: '解题思路1' }],
-      })),
-      unlockAnswer: vi.fn(async () => ({
-        answerId: 3567559,
-        content: '```cpp\nint main() { return 0; }\n```',
-        unlocked: true,
-      })),
-    };
-
     await openTaskCommand(taskRoot, {
       taskDetailClient,
       sourceClient,
       hiddenTestClient,
       templateClient,
       passedClient,
-      answerClient,
     });
 
     expect(taskDetailClient.getTaskDetail).toHaveBeenCalledTimes(1);
     expect(templateClient.fetchTemplateFiles).not.toHaveBeenCalled();
     expect(passedClient.fetchPassedFiles).not.toHaveBeenCalled();
-    expect(answerClient.fetchAnswerInfo).toHaveBeenCalledWith({ taskId: 'fc7pz3fm6yjh' });
-    expect(answerClient.unlockAnswer).toHaveBeenCalledWith({
-      taskId: 'fc7pz3fm6yjh',
-      answerId: 3567559,
-    });
     await expect(
       readFile(path.join(taskRoot, '_educoder', 'meta', 'task.json'), 'utf8'),
     ).resolves.toContain('"taskId": "fc7pz3fm6yjh"');
@@ -187,14 +169,11 @@ describe('openTaskCommand', () => {
     await expect(
       readFile(path.join(taskRoot, 'code', 'template', 'test1', 'tasks.h'), 'utf8'),
     ).rejects.toThrow();
-    await expect(readFile(path.join(taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).resolves.toContain(
-      '"answerId": 3567559',
-    );
-    await expect(readFile(path.join(taskRoot, 'answers', 'index.md'), 'utf8')).rejects.toThrow();
-    await expect(readFile(path.join(taskRoot, 'answers', 'answer-3567559.md'), 'utf8')).resolves.toContain('int main');
+    await expect(readFile(path.join(taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(path.join(taskRoot, 'answers', 'answer-3567559.md'), 'utf8')).rejects.toThrow();
   });
 
-  it('re-hydrates when only statement and answers are missing from an otherwise openable package', async () => {
+  it('re-hydrates when only the statement is missing from an otherwise openable package', async () => {
     const taskRoot = await createTempTaskRoot();
     const collectionRoot = path.join(taskRoot, '..', '..', '..', '..');
 
@@ -266,35 +245,18 @@ describe('openTaskCommand', () => {
     const hiddenTestClient = {
       fetchHiddenTests: vi.fn(async () => [{ input: '1 2\n', output: '3\n' }]),
     };
-    const answerClient = {
-      fetchAnswerInfo: vi.fn(async () => ({
-        status: 3,
-        entries: [{ answerId: 9, name: '补齐答案' }],
-      })),
-      unlockAnswer: vi.fn(async () => ({
-        answerId: 9,
-        content: 'answer body\n',
-        unlocked: true,
-      })),
-    };
-
     await openTaskCommand(taskRoot, {
       taskDetailClient,
       sourceClient,
       hiddenTestClient,
-      answerClient,
     });
 
     expect(taskDetailClient.getTaskDetail).toHaveBeenCalledTimes(1);
-    expect(answerClient.fetchAnswerInfo).toHaveBeenCalledWith({ taskId: 'fc7pz3fm6yjh' });
     await expect(readFile(path.join(taskRoot, 'problem', 'statement.md'), 'utf8')).resolves.toContain(
       '重新补齐题面',
     );
-    await expect(readFile(path.join(taskRoot, 'answers', 'index.md'), 'utf8')).rejects.toThrow();
-    await expect(readFile(path.join(taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).resolves.toContain(
-      '"answerId": 9',
-    );
-    await expect(readFile(path.join(taskRoot, 'answers', 'answer-9.md'), 'utf8')).resolves.toContain('answer body');
+    await expect(readFile(path.join(taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).rejects.toThrow();
+    await expect(readFile(path.join(taskRoot, 'answers', 'answer-9.md'), 'utf8')).rejects.toThrow();
   });
 
   it('migrates legacy workspace tests and answers forward without deleting the original legacy files', async () => {

@@ -1,15 +1,12 @@
-import { access, readFile, readdir } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { AnswerFetchClientLike } from '../core/api/answerFetchClient.js';
 import type { ProblemFetchClientLike } from '../core/api/problemFetchClient.js';
 import type { RepositoryFetchClientLike } from '../core/api/repositoryFetchClient.js';
 import { openTaskPrimaryEditors } from './openTaskMaterials.js';
 import { syncTaskPackageFromRemote } from '../core/sync/taskPackageSync.js';
 import type { CollectionManifest, HomeworkManifest, TaskManifest } from '../core/sync/manifestStore.js';
 import { loadTaskStateModel, type TaskStateModel } from '../core/ui/stateModel.js';
-import { readRecoveryMetadata } from '../core/recovery/materialStore.js';
 import { applyLegacyTaskCompat } from '../core/workspace/legacyTaskCompat.js';
-import { hasAnswerFiles, readAnswerEntryCount } from '../core/workspace/answerSurface.js';
 import { resolveTaskPackagePaths } from '../core/workspace/taskPackageMigration.js';
 import { revealInExplorer as defaultRevealInExplorer } from '../core/workspace/workspaceBinding.js';
 import type { HiddenTestFetchClientLike } from '../core/api/hiddenTestFetchClient.js';
@@ -26,7 +23,6 @@ export interface OpenTaskCommandDeps {
   problemClient?: ProblemFetchClientLike;
   templateClient?: TemplateFetchClientLike;
   passedClient?: PassedFetchClientLike;
-  answerClient?: AnswerFetchClientLike;
   revealInExplorer?: (targetPath: string) => Promise<unknown>;
   onTaskOpened?: (taskRoot: string) => PromiseLike<void> | void;
 }
@@ -42,20 +38,17 @@ export async function openTaskCommand(
     hiddenReady,
     taskMetaReady,
     statementReady,
-    answersReady,
   ] = await Promise.all([
     resolvedPaths.currentCodeSource !== 'missing',
     resolvedPaths.hiddenTestsSource !== 'missing',
     hasPath(path.join(taskRoot, '_educoder', 'meta', 'task.json')),
     hasStatementMaterial(taskRoot),
-    hasAnswerMaterial(taskRoot, resolvedPaths.answersDir),
   ]);
   const needsHydration =
     !workspaceReady ||
     !hiddenReady ||
     !taskMetaReady ||
-    !statementReady ||
-    (deps.answerClient ? !answersReady : false);
+    !statementReady;
 
   if (
     needsHydration &&
@@ -75,7 +68,6 @@ export async function openTaskCommand(
       hiddenTestClient: deps.hiddenTestClient,
       repositoryClient: deps.repositoryClient,
       problemClient: deps.problemClient,
-      answerClient: deps.answerClient,
       mode: 'open',
     });
   }
@@ -148,30 +140,7 @@ async function hasStatementMaterial(taskRoot: string): Promise<boolean> {
   ]);
 }
 
-async function hasAnswerMaterial(taskRoot: string, answersDir: string): Promise<boolean> {
-  const recoveryMetadata = await readRecoveryMetadata(taskRoot).catch(() => undefined);
-  if (recoveryMetadata?.answerReady || recoveryMetadata?.lastAnswerSyncAt) {
-    return true;
-  }
-
-  const [answerEntryCount, unlockedReady] = await Promise.all([
-    readAnswerEntryCount(taskRoot, answersDir),
-    hasAnswerFiles(answersDir),
-  ]);
-
-  return answerEntryCount > 0 || unlockedReady;
-}
-
 async function hasAnyPath(paths: string[]): Promise<boolean> {
   const results = await Promise.all(paths.map((targetPath) => hasPath(targetPath)));
   return results.some(Boolean);
-}
-
-async function dirHasFiles(targetPath: string): Promise<boolean> {
-  try {
-    const entries = await readdir(targetPath, { withFileTypes: true });
-    return entries.some((entry) => entry.isFile() || entry.isDirectory());
-  } catch {
-    return false;
-  }
 }

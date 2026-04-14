@@ -28,6 +28,7 @@
   - 左侧直接切换章节 / 作业 / 题目
 - **题目工作台**
   - 自动打开题面、代码、测试、答案等常用入口
+  - 默认不同步参考答案；需要时再手动拉取
 - **本地评测**
   - 默认读取 `tests/all`
   - 结果落盘到 `_educoder/judge/latest_local.json`
@@ -69,6 +70,11 @@ npm run package:vsix
 7. 执行 **运行本地测试**
 8. 通过后执行 **提交评测**
 
+说明：
+
+- 默认打开题目 / 一键同步本章不会自动解锁参考答案
+- 如确需把参考答案拉到本地，请手动执行 `Educoder Local OJ: 完整同步答案（可能影响评分）`
+
 ---
 
 ## 题目包目录结构
@@ -108,6 +114,7 @@ npm run package:vsix
 - `Educoder Local OJ: 选择/打开题目`
 - `Educoder Local OJ: 打开测试集`
 - `Educoder Local OJ: 打开答案`
+- `Educoder Local OJ: 完整同步答案（可能影响评分）`
 - `Educoder Local OJ: 打开完整编译报错`
 - `Educoder Local OJ: 运行本地测试`
 - `Educoder Local OJ: 提交评测（本地 + 头哥）`

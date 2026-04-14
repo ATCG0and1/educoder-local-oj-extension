@@ -175,6 +175,42 @@ describe('renderTask', () => {
     expect(html).not.toContain('失败输出');
   });
 
+  it('shows the dangerous full-answer sync action when answers are missing', () => {
+    const html = renderTask(
+      {
+        taskId: 'fc7pz3fm6yjh',
+        taskName: '第1关 基本实训：链表操作',
+        displayTitle: '2-2 · 第1关 基本实训：链表操作',
+        state: '已同步',
+        solveState: '作答中',
+        availableStates: ['作答中'],
+        readiness: 'local_ready',
+        hiddenTestsCached: true,
+        localCaseCount: 3,
+        materials: {
+          statement: 'ready',
+          template: 'ready',
+          currentCode: 'ready',
+          tests: 'ready',
+          answers: 'missing',
+          metadata: 'ready',
+        },
+        templateReady: true,
+        passedReady: false,
+        answerEntryCount: 0,
+        unlockedAnswerCount: 0,
+        repositoryReady: false,
+        repositoryFileCount: 0,
+        historyEntryCount: 0,
+      },
+      'C:/task-root',
+    );
+
+    expect(html).toContain('完整同步答案（可能影响评分）');
+    expect(html).toContain('data-educoder-command="educoderLocalOj.syncTaskAnswers"');
+    expect(html).not.toContain('data-educoder-command="educoderLocalOj.syncTaskAnswersSafe"');
+  });
+
   it('shows local-pass guidance when headguy has not been submitted yet', () => {
     const html = renderTask(
       {

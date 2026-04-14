@@ -196,6 +196,94 @@ describe('officialJudgeExecutor', () => {
     );
   });
 
+  it('refreshes judge metadata from task detail before posting files', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await import('node:fs/promises').then(({ mkdir }) =>
+      mkdir(path.join(taskRoot, 'code', 'current', 'src'), { recursive: true }),
+    );
+    await writeFile(path.join(taskRoot, 'code', 'current', 'src', 'main.cpp'), 'int main() { return 0; }\n', 'utf8');
+    await writeJson(path.join(taskRoot, '_educoder', 'meta', 'task.json'), {
+      taskId: 'fc7pz3fm6yjh',
+      homeworkId: '3727439',
+      gameId: 1,
+      challengeId: 2,
+      shixunEnvironmentId: 3,
+      currentUserId: 4,
+      userLogin: 'stale-login',
+      myshixunIdentifier: 'stale-myshixun',
+      editablePaths: ['legacy.cpp'],
+    });
+
+    const get = vi.fn(async () => ({
+      game: { id: 215617259 },
+      challenge: {
+        id: 4132394,
+        path: 'src/main.cpp；src/missing.cpp',
+      },
+      myshixun: { identifier: 'obcts7i5fx' },
+      code_editor: { shixun_environment_id: 1309307 },
+      user: {
+        user_id: 2312645,
+        login: 'mbzfstnkj',
+      },
+    }));
+    const post = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: { commitID: 'commit-1' },
+        resubmit: 'resubmit-1',
+        sec_key: 'sec-key-1',
+        content_modified: 0,
+      })
+      .mockResolvedValueOnce({
+        status: 1,
+        message: 'Accepted',
+        had_done: 1,
+      });
+
+    configureDefaultOfficialJudgeExecutor(
+      createOfficialJudgeExecutor({
+        get,
+        post,
+      } as any),
+    );
+
+    await expect(runOfficialJudgeCommand(taskRoot)).resolves.toMatchObject({
+      summary: {
+        verdict: 'passed',
+      },
+    });
+
+    expect(get).toHaveBeenCalledWith('/api/tasks/fc7pz3fm6yjh.json', {
+      homework_common_id: '3727439',
+    });
+    expect(post).toHaveBeenNthCalledWith(
+      1,
+      '/api/myshixuns/obcts7i5fx/update_file.json',
+      expect.objectContaining({
+        path: 'src/main.cpp',
+        game_id: 215617259,
+        extras: expect.objectContaining({
+          challenge_id: 4132394,
+          currentUserId: 2312645,
+        }),
+      }),
+      { zzud: 'mbzfstnkj' },
+    );
+    expect(post).toHaveBeenNthCalledWith(
+      2,
+      '/api/tasks/fc7pz3fm6yjh/game_build.json',
+      expect.objectContaining({
+        shixun_environment_id: 1309307,
+        extras: expect.objectContaining({
+          challenge_id: 4132394,
+          currentUserId: 2312645,
+        }),
+      }),
+      { zzud: 'mbzfstnkj' },
+    );
+  });
+
   it('does not fall back to arbitrary workspace files when editablePaths exist but none match', async () => {
     const taskRoot = await createTempTaskRoot();
     await import('node:fs/promises').then(({ mkdir }) =>

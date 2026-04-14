@@ -51,8 +51,10 @@ interface HiddenCaseFile {
   reportOutputPath: string;
 }
 
-const KNOWN_ENV_MISSING_CHECKER_PATTERN =
-  /python:\s*can't open file\s+'[^']*myshixun[^']*check\.py'/i;
+const KNOWN_ENV_MISSING_HELPER_PATTERNS = [
+  /python:\s*can't open file\s+'[^']*myshixun[^']*check\.py'/i,
+  /myshixun[^\r\n]*memory\.sh:\s*No such file or directory/i,
+];
 
 const KNOWN_CHECKER_TRAILING_LINES = new Set([
   '您的算法时间复杂度处于一般阶段',
@@ -60,6 +62,10 @@ const KNOWN_CHECKER_TRAILING_LINES = new Set([
   '没有额外使用辅助空间',
   '额外使用了辅助空间',
 ]);
+
+const KNOWN_CHECKER_TRAILING_LINE_PATTERNS = [
+  /^time=\d+\s*,\s*mem=\d+$/i,
+];
 
 export async function runLocalJudge(input: RunLocalJudgeInput): Promise<LocalJudgeReport> {
   const resolvedPaths = await resolveTaskPackagePaths(input.taskRoot);
@@ -287,7 +293,7 @@ function normalizeKnownEnvNoiseOutput(input: {
   actual: string;
   stderr: string;
 }): string {
-  if (!KNOWN_ENV_MISSING_CHECKER_PATTERN.test(input.stderr)) {
+  if (!KNOWN_ENV_MISSING_HELPER_PATTERNS.some((pattern) => pattern.test(input.stderr))) {
     return input.actual;
   }
 
@@ -309,9 +315,13 @@ function normalizeKnownEnvNoiseOutput(input: {
     return input.actual;
   }
 
-  const isKnownTrailingNoise = trailingLines.every((line) =>
-    KNOWN_CHECKER_TRAILING_LINES.has(line.trim()),
-  );
+  const isKnownTrailingNoise = trailingLines.every((line) => {
+    const normalized = line.trim();
+    return (
+      KNOWN_CHECKER_TRAILING_LINES.has(normalized) ||
+      KNOWN_CHECKER_TRAILING_LINE_PATTERNS.some((pattern) => pattern.test(normalized))
+    );
+  });
 
   return isKnownTrailingNoise ? input.expected : input.actual;
 }

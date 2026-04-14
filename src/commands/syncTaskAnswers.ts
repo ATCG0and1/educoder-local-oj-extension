@@ -14,18 +14,50 @@ export interface SyncTaskAnswersDeps {
   answerClient: AnswerFetchClientLike;
 }
 
-export async function syncTaskAnswers(taskRoot: string, deps: SyncTaskAnswersDeps): Promise<void> {
+export interface SyncTaskAnswersOptions {
+  mode?: 'safe' | 'full';
+}
+
+export async function syncTaskAnswers(
+  taskRoot: string,
+  deps: SyncTaskAnswersDeps,
+  options: SyncTaskAnswersOptions = {},
+): Promise<void> {
   const taskManifest = JSON.parse(
     await readFile(path.join(taskRoot, 'task.manifest.json'), 'utf8'),
   ) as TaskManifest;
   const answerInfo = await deps.answerClient.fetchAnswerInfo({
     taskId: taskManifest.taskId,
   });
-  const unlockedAnswers = await Promise.all(
-    answerInfo.entries
-      .filter((entry): entry is typeof entry & { answerId: number } => typeof entry.answerId === 'number')
-      .map((entry) => deps.answerClient.unlockAnswer({ taskId: taskManifest.taskId, answerId: entry.answerId })),
-  );
+  const mode = options.mode ?? 'safe';
+  const embeddedAnswers = answerInfo.entries
+    .filter(
+      (entry): entry is typeof entry & { answerId: number; content: string } =>
+        typeof entry.answerId === 'number' &&
+        typeof entry.content === 'string' &&
+        entry.content.length > 0,
+    )
+    .map((entry) => ({
+      answerId: entry.answerId,
+      content: entry.content,
+      unlocked: true,
+    }));
+  const embeddedIds = new Set(embeddedAnswers.map((entry) => entry.answerId));
+  const unlockTargets =
+    mode === 'full'
+      ? answerInfo.entries.filter(
+          (entry): entry is typeof entry & { answerId: number } =>
+            typeof entry.answerId === 'number' && !embeddedIds.has(entry.answerId),
+        )
+      : [];
+  const unlockedAnswers = [
+    ...embeddedAnswers,
+    ...(await Promise.all(
+      unlockTargets.map((entry) =>
+        deps.answerClient.unlockAnswer({ taskId: taskManifest.taskId, answerId: entry.answerId }),
+      ),
+    )),
+  ];
   const syncedAt = new Date().toISOString();
 
   await writeAnswerArtifacts(taskRoot, taskManifest, answerInfo, unlockedAnswers, syncedAt);

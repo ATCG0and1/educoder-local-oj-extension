@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 describe('syncTaskAnswers', () => {
-  it('fetches answer info, exposes answers under the canonical package surface, updates recovery metadata, and skips README/index artifacts', async () => {
+  it('safe mode only persists answer bodies already embedded in get_answer_info and does not call unlock_answer', async () => {
     const taskRoot = await createTempTaskRoot();
     await writeJson(path.join(taskRoot, 'task.manifest.json'), {
       taskId: 'fc7pz3fm6yjh',
@@ -42,7 +42,16 @@ describe('syncTaskAnswers', () => {
     const answerClient = {
       fetchAnswerInfo: vi.fn(async () => ({
         status: 3,
-        entries: [{ answerId: 3567559, name: '解题思路1', score: 50, ratio: 10 }],
+        entries: [
+          {
+            answerId: 3567559,
+            name: '解题思路1',
+            score: 50,
+            ratio: 10,
+            content: '```cpp\nint main() { return 0; }\n```',
+          },
+          { answerId: 4000002, name: '解题思路2', score: 50, ratio: 10 },
+        ],
       })),
       unlockAnswer: vi.fn(async () => ({
         answerId: 3567559,
@@ -51,17 +60,15 @@ describe('syncTaskAnswers', () => {
       })),
     };
 
-    await syncTaskAnswers(taskRoot, { answerClient });
+    await syncTaskAnswers(taskRoot, { answerClient }, { mode: 'safe' });
 
     expect(answerClient.fetchAnswerInfo).toHaveBeenCalledWith({ taskId: 'fc7pz3fm6yjh' });
-    expect(answerClient.unlockAnswer).toHaveBeenCalledWith({
-      taskId: 'fc7pz3fm6yjh',
-      answerId: 3567559,
-    });
+    expect(answerClient.unlockAnswer).not.toHaveBeenCalled();
     await expect(readFile(path.join(taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).resolves.toContain(
       '"answerId": 3567559',
     );
     await expect(readFile(path.join(taskRoot, 'answers', 'answer-3567559.md'), 'utf8')).resolves.toContain('int main');
+    await expect(access(path.join(taskRoot, 'answers', 'answer-4000002.md'))).rejects.toBeDefined();
     await expect(readFile(path.join(taskRoot, '_educoder', 'meta', 'recovery.json'), 'utf8')).resolves.toContain(
       '"unlockedAnswerCount": 1',
     );
@@ -70,7 +77,7 @@ describe('syncTaskAnswers', () => {
     await expect(access(path.join(taskRoot, 'README.md'))).rejects.toBeDefined();
   });
 
-  it('clears stale unlocked answers when the refreshed answer set is now empty', async () => {
+  it('full mode unlocks missing answer bodies and clears stale unlocked answers when the refreshed answer set is now empty', async () => {
     const taskRoot = await createTempTaskRoot();
     await writeJson(path.join(taskRoot, 'task.manifest.json'), {
       taskId: 'fc7pz3fm6yjh',
@@ -90,7 +97,7 @@ describe('syncTaskAnswers', () => {
         unlocked: true,
       })),
     };
-    await syncTaskAnswers(taskRoot, { answerClient: firstClient });
+    await syncTaskAnswers(taskRoot, { answerClient: firstClient }, { mode: 'full' });
 
     const secondClient = {
       fetchAnswerInfo: vi.fn(async () => ({
@@ -103,7 +110,7 @@ describe('syncTaskAnswers', () => {
         unlocked: false,
       })),
     };
-    await syncTaskAnswers(taskRoot, { answerClient: secondClient });
+    await syncTaskAnswers(taskRoot, { answerClient: secondClient }, { mode: 'full' });
 
     await expect(
       access(path.join(taskRoot, 'answers', 'answer-3567559.md')),

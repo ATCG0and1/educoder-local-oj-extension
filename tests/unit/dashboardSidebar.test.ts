@@ -50,14 +50,22 @@ describe('dashboard sidebar provider', () => {
       readiness: 'missing_workspace' as const,
       hiddenTestsCached: false,
       localCaseCount: 0,
+      materials: {
+        statement: 'ready',
+        template: 'missing',
+        currentCode: 'ready',
+        tests: 'ready',
+        answers: 'missing',
+        metadata: 'ready',
+      },
       templateReady: false,
       passedReady: false,
-      answerEntryCount: 0,
-      unlockedAnswerCount: 0,
-      repositoryReady: false,
-      repositoryFileCount: 0,
-      historyEntryCount: 0,
-    }));
+        answerEntryCount: 0,
+        unlockedAnswerCount: 0,
+        repositoryReady: false,
+        repositoryFileCount: 0,
+        historyEntryCount: 0,
+    } as const));
     const provider = new DashboardSidebarProvider({
       executeCommand,
       loadTaskModel,
@@ -91,6 +99,14 @@ describe('dashboard sidebar provider', () => {
       readiness: 'missing_workspace' as const,
       hiddenTestsCached: false,
       localCaseCount: 0,
+      materials: {
+        statement: 'ready',
+        template: 'missing',
+        currentCode: 'ready',
+        tests: 'ready',
+        answers: 'missing',
+        metadata: 'ready',
+      },
       templateReady: false,
       passedReady: false,
       answerEntryCount: 0,
@@ -98,7 +114,7 @@ describe('dashboard sidebar provider', () => {
       repositoryReady: false,
       repositoryFileCount: 0,
       historyEntryCount: 0,
-    }));
+    } as const));
     const provider = new DashboardSidebarProvider({
       executeCommand,
       loadTaskModel,

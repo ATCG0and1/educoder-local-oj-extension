@@ -23,7 +23,9 @@ export function renderTask(model: TaskStateModel, taskRoot?: string): string {
       </div>
       <div class="text-actions" aria-label="做题资料">
         ${renderTextAction('测试集', 'educoderLocalOj.openTaskTests', taskRoot)}
-        ${renderTextAction('打开答案', 'educoderLocalOj.openTaskAnswers', taskRoot)}
+        ${model.materials?.answers === 'ready'
+          ? renderTextAction('打开答案', 'educoderLocalOj.openTaskAnswers', taskRoot)
+          : renderTextAction('完整同步答案（可能影响评分）', 'educoderLocalOj.syncTaskAnswers', taskRoot)}
         ${model.localJudge?.compileVerdict === 'compile_error'
           ? renderTextAction('完整报错', 'educoderLocalOj.openLatestCompileError', taskRoot)
           : ''}

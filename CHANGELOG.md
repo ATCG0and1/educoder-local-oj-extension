@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-04-14
+
+### Fixed
+
+- expanded local judge environment-noise handling for missing helper scripts so `memory.sh`-missing stderr and trailing `time=..., mem=...` lines no longer trigger false local failures when the expected output body already matches
+
+## [0.0.7] - 2026-04-13
+
+### Fixed
+
+- stopped normal task open/full-sync flows from auto-unlocking Educoder reference answers, so daily solving no longer triggers answer unlock side effects before the user explicitly requests a full answer sync
+- split answer sync into a non-unlocking path for embedded answer bodies and a warning-gated `完整同步答案（可能影响评分）` path for explicit full unlocks
+
+## [0.0.6] - 2026-04-13
+
+### Fixed
+
+- refreshed official-submit metadata from `/api/tasks/:taskId.json` right before remote judging, so `myshixun/game/challenge/user/editablePaths` no longer rely solely on stale local cache and submit-side runtime fields stay aligned with the latest Educoder task session
+
 ## [0.0.5] - 2026-04-13
 
 ### Fixed

@@ -120,17 +120,6 @@ describe('sync and open task smoke flow', () => {
         passedClient: {
           fetchPassedFiles: async () => [{ path: 'test1/test1.cpp', content: 'accepted\n' }],
         },
-        answerClient: {
-          fetchAnswerInfo: async () => ({
-            status: 3,
-            entries: [{ answerId: 3567559, name: '解题思路1', content: '```cpp\nint main() {}\n```' }],
-          }),
-          unlockAnswer: async () => ({
-            answerId: 3567559,
-            content: '```cpp\nint main() {}\n```',
-            unlocked: true,
-          }),
-        },
       }),
     );
     configureCommandService('educoderLocalOj.openTask', (taskRoot) =>
@@ -223,7 +212,7 @@ describe('sync and open task smoke flow', () => {
         currentCode: 'ready',
         templateCode: 'ready',
         tests: 'ready',
-        answers: 'ready',
+        answers: 'missing',
         metadata: 'ready',
       },
     });

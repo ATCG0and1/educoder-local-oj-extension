@@ -25,7 +25,10 @@ import { runLocalJudgeCommand } from './commands/runLocalJudge.js';
 import { runOfficialJudgeCommand } from './commands/runOfficialJudge.js';
 import { submitTaskCommand } from './commands/submitTask.js';
 import { syncCollectionPackages } from './commands/syncCollectionPackages.js';
-import { syncTaskAnswers } from './commands/syncTaskAnswers.js';
+import {
+  syncTaskAnswersFullCommand,
+  syncTaskAnswersSafeCommand,
+} from './commands/syncTaskAnswersCommand.js';
 import { syncTaskHistory } from './commands/syncTaskHistory.js';
 import { syncTaskPackageCommand } from './commands/syncTaskPackage.js';
 import { syncTaskRepository } from './commands/syncTaskRepository.js';
@@ -82,10 +85,12 @@ const frozenCommands = [
   'educoderLocalOj.syncTaskHistory',
   'educoderLocalOj.restoreHistorySnapshot',
   'educoderLocalOj.syncTaskRepository',
+  'educoderLocalOj.syncTaskAnswersSafe',
   'educoderLocalOj.syncTaskAnswers',
   'educoderLocalOj.compareWithTemplate',
   'educoderLocalOj.compareWithAnswer',
   'educoderLocalOj.syncTaskRepositoryFromTree',
+  'educoderLocalOj.syncTaskAnswersSafeFromTree',
   'educoderLocalOj.syncTaskAnswersFromTree',
   'educoderLocalOj.compareWithTemplateFromTree',
   'educoderLocalOj.compareWithAnswerFromTree',
@@ -352,9 +357,13 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
         syncTaskRepository(requireTaskRoot(taskRoot), createDefaultRepositoryDeps(context)),
       );
+    case 'educoderLocalOj.syncTaskAnswersSafe':
+      return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
+        syncTaskAnswersSafeCommand(requireTaskRoot(taskRoot), createDefaultAnswerDeps(context)),
+      );
     case 'educoderLocalOj.syncTaskAnswers':
       return runTaskScopedCommand(requireTaskRoot(taskRoot), () =>
-        syncTaskAnswers(requireTaskRoot(taskRoot), createDefaultAnswerDeps(context)),
+        syncTaskAnswersFullCommand(requireTaskRoot(taskRoot), createDefaultAnswerDeps(context)),
       );
     case 'educoderLocalOj.compareWithTemplate': {
       const relativePath = typeof args[1] === 'string' ? args[1] : undefined;
@@ -377,11 +386,19 @@ async function runCommand(commandId: string, args: unknown[]): Promise<unknown> 
           )
         : undefined;
     }
+    case 'educoderLocalOj.syncTaskAnswersSafeFromTree': {
+      const resolvedTaskRoot = resolveTaskRootFromTreeInput(args[0]);
+      return resolvedTaskRoot
+        ? runTaskScopedCommand(resolvedTaskRoot, () =>
+            syncTaskAnswersSafeCommand(resolvedTaskRoot, createDefaultAnswerDeps(context)),
+          )
+        : undefined;
+    }
     case 'educoderLocalOj.syncTaskAnswersFromTree': {
       const resolvedTaskRoot = resolveTaskRootFromTreeInput(args[0]);
       return resolvedTaskRoot
         ? runTaskScopedCommand(resolvedTaskRoot, () =>
-            syncTaskAnswers(resolvedTaskRoot, createDefaultAnswerDeps(context)),
+            syncTaskAnswersFullCommand(resolvedTaskRoot, createDefaultAnswerDeps(context)),
           )
         : undefined;
     }
@@ -525,7 +542,6 @@ function createDefaultOpenTaskDeps(_context: vscode.ExtensionContext) {
     problemClient: createProblemClient(runtime),
     templateClient: new TemplateFetchClient(client),
     passedClient: new PassedFetchClient(client),
-    answerClient: new AnswerFetchClient(client),
     onTaskOpened: async (taskRoot: string) => setStoredLastOpenedTaskRoot(_context, taskRoot),
   };
 }
@@ -550,7 +566,6 @@ function createDefaultSyncTaskPackageDeps(_context: vscode.ExtensionContext) {
     problemClient: createProblemClient(runtime),
     templateClient: new TemplateFetchClient(client),
     passedClient: new PassedFetchClient(client),
-    answerClient: new AnswerFetchClient(client),
   };
 }
 
@@ -573,6 +588,7 @@ function createDefaultAnswerDeps(_context: vscode.ExtensionContext) {
   const client = getActiveRuntime().client;
   return {
     answerClient: new AnswerFetchClient(client),
+    window: vscode.window,
   };
 }
 

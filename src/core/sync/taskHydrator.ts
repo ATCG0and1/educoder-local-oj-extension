@@ -67,6 +67,7 @@ export interface HydrateRemoteTaskInput {
   templateClient?: TemplateFetchClientLike;
   passedClient?: PassedFetchClientLike;
   answerClient?: AnswerFetchClientLike;
+  answerSyncMode?: 'none' | 'safe' | 'full';
 }
 
 export interface HydrateRemoteTaskResult {
@@ -158,7 +159,7 @@ export async function hydrateTaskFromRemote(
           filePaths: detail.editablePaths,
         })
       : [],
-    input.answerClient
+    input.answerClient && (input.answerSyncMode ?? 'none') !== 'none'
       ? input.answerClient.fetchAnswerInfo({ taskId: input.taskId }).catch(() => undefined)
       : undefined,
   ]);
@@ -167,6 +168,7 @@ export async function hydrateTaskFromRemote(
     taskId: input.taskId,
     answerInfo,
     answerClient: input.answerClient,
+    mode: input.answerSyncMode ?? 'none',
   });
   const unlockedAnswerFiles = materializeUnlockedAnswerFiles(unlockedAnswers);
   const layout = await hydrateTask({
@@ -343,7 +345,12 @@ async function resolveUnlockedAnswers(input: {
   taskId: string;
   answerInfo?: AnswerInfoSummary;
   answerClient?: AnswerFetchClientLike;
+  mode: 'none' | 'safe' | 'full';
 }): Promise<UnlockedAnswerContent[]> {
+  if (input.mode === 'none') {
+    return [];
+  }
+
   const entries = input.answerInfo?.entries ?? [];
   const embeddedContent = entries
     .filter((entry): entry is typeof entry & { answerId: number; content: string } =>
@@ -361,7 +368,7 @@ async function resolveUnlockedAnswers(input: {
     .filter((entry): entry is typeof entry & { answerId: number } => typeof entry.answerId === 'number')
     .filter((entry) => !embeddedIds.has(entry.answerId));
 
-  if (!input.answerClient || unlockTargets.length === 0) {
+  if (input.mode !== 'full' || !input.answerClient || unlockTargets.length === 0) {
     return embeddedContent;
   }
 

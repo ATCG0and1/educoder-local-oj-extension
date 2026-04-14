@@ -234,9 +234,45 @@ describe('runLocalJudge', () => {
         '您的算法时间复杂度处于一般阶段',
         '您的算法时间复杂度处于优秀阶段',
         '没有额外使用辅助空间',
+        'time=1, mem=0',
       ].join('\n') + '\n',
       stderr:
         "python: can't open file 'D:\\\\data\\\\workspace\\\\myshixun\\\\step1\\\\check.py': [Errno 2] No such file or directory\r\n",
+      exitCode: 0,
+      timedOut: false,
+    }));
+
+    const result = await runLocalJudge({
+      taskRoot,
+      compileWorkspace,
+      executeBinary,
+    });
+
+    expect(result.summary).toMatchObject({
+      total: 1,
+      passed: 1,
+      failed: 0,
+    });
+    expect(result.caseResults[0]?.verdict).toBe('passed');
+  });
+
+  it('treats missing memory.sh metrics noise as a non-blocking trailing output mismatch', async () => {
+    const taskRoot = await createTempTaskRoot();
+    await writeTextFile(path.join(taskRoot, 'code', 'current', 'step1', 'head1.h'), '#pragma once\n');
+    await writeTextFile(path.join(taskRoot, 'tests', 'all', 'case_001_input.txt'), '1\n');
+    await writeTextFile(path.join(taskRoot, 'tests', 'all', 'case_001_output.txt'), 'OK\n');
+
+    const compileWorkspace = vi.fn(async ({ workspaceDir }: { workspaceDir: string }) => ({
+      success: true,
+      executablePath: path.join(workspaceDir, 'app.exe'),
+      stdout: '',
+      stderr: '',
+      sourceFiles: ['step1/read.cpp'],
+    }));
+
+    const executeBinary = vi.fn(async () => ({
+      stdout: ['OK', 'time=1, mem=0'].join('\n') + '\n',
+      stderr: 'sh: /data/workspace/myshixun/step1/memory.sh: No such file or directory\n',
       exitCode: 0,
       timedOut: false,
     }));

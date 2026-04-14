@@ -41,6 +41,7 @@ export interface SyncTaskPackageFromRemoteInput {
   templateClient?: TemplateFetchClientLike;
   passedClient?: PassedFetchClientLike;
   answerClient?: AnswerFetchClientLike;
+  answerSyncMode?: 'none' | 'safe' | 'full';
   mode?: 'open' | 'full';
 }
 
@@ -64,6 +65,7 @@ export async function syncTaskPackageFromRemote(
     templateClient: fullSync ? input.templateClient : undefined,
     passedClient: fullSync ? input.passedClient : undefined,
     answerClient: input.answerClient,
+    answerSyncMode: input.answerSyncMode,
   });
 
   if (!fullSync) {
@@ -77,7 +79,6 @@ export async function syncTaskPackageFromRemote(
     materials: await detectMaterialStates(hydrated.layout, {
       fullSync,
       detail: hydrated.detail,
-      answerClientReady: Boolean(input.answerClient),
       problemClientReady: Boolean(input.problemClient),
     }),
   };
@@ -108,7 +109,6 @@ async function detectMaterialStates(
   options: {
     fullSync: boolean;
     detail: TaskDetailSummary;
-    answerClientReady: boolean;
     problemClientReady: boolean;
   },
 ): Promise<SyncTaskPackageResult['materials']> {
@@ -133,13 +133,7 @@ async function detectMaterialStates(
     currentCode: currentCodeReady ? 'ready' : 'missing',
     templateCode: templateReady ? 'ready' : 'missing',
     tests: testsReady ? 'ready' : 'missing',
-    answers: answersReady
-      ? 'ready'
-      : options.fullSync
-        ? options.answerClientReady
-          ? 'missing'
-          : 'unavailable'
-        : 'missing',
+    answers: answersReady ? 'ready' : 'missing',
     metadata: metadataReady ? 'ready' : 'missing',
   };
 }

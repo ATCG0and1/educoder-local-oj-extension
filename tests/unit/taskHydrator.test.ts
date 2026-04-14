@@ -179,17 +179,6 @@ describe('hydrateTask', () => {
       passedClient: {
         fetchPassedFiles: async () => [{ path: 'test1/tasks.h', content: 'passed solution\n' }],
       },
-      answerClient: {
-        fetchAnswerInfo: async () => ({
-          status: 3,
-          entries: [{ answerId: 3567559, name: '解题思路1', content: '```cpp\nint main() {}\n```' }],
-        }),
-        unlockAnswer: async () => ({
-          answerId: 3567559,
-          content: '```cpp\nint main() {}\n```',
-          unlocked: true,
-        }),
-      },
     });
 
     await expect(readFile(path.join(result.layout.currentCodeDir, 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
@@ -201,12 +190,8 @@ describe('hydrateTask', () => {
     await expect(readFile(path.join(result.layout.passedCodeDir, 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'passed solution\n',
     );
-    await expect(readFile(result.layout.answerInfoPath, 'utf8')).resolves.toContain(
-      '"answerId": 3567559',
-    );
-    await expect(readFile(path.join(result.layout.answersDir, 'answer-3567559.md'), 'utf8')).resolves.toContain(
-      'int main',
-    );
+    await expect(readFile(result.layout.answerInfoPath, 'utf8')).rejects.toThrow();
+    await expect(readFile(path.join(result.layout.answersDir, 'answer-3567559.md'), 'utf8')).rejects.toThrow();
     await expect(readFile(path.join(result.layout.problemDir, 'statement.md'), 'utf8')).resolves.toContain(
       '题目描述',
     );
@@ -411,17 +396,6 @@ describe('hydrateTask', () => {
       passedClient: {
         fetchPassedFiles: async () => [{ path: 'test1/tasks.h', content: 'passed solution\n' }],
       },
-      answerClient: {
-        fetchAnswerInfo: async () => ({
-          status: 3,
-          entries: [{ answerId: 3567559, name: '解题思路1', content: '```cpp\nint main() {}\n```' }],
-        }),
-        unlockAnswer: async () => ({
-          answerId: 3567559,
-          content: '```cpp\nint main() {}\n```',
-          unlocked: true,
-        }),
-      },
     });
 
     expect(result.materials).toEqual({
@@ -429,7 +403,7 @@ describe('hydrateTask', () => {
       currentCode: 'ready',
       templateCode: 'ready',
       tests: 'ready',
-      answers: 'ready',
+      answers: 'missing',
       metadata: 'ready',
     });
     await expect(readFile(path.join(result.taskRoot, 'problem', 'statement.md'), 'utf8')).resolves.toContain(
@@ -438,13 +412,25 @@ describe('hydrateTask', () => {
     await expect(readFile(path.join(result.taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'current workspace\n',
     );
-    await expect(readFile(path.join(result.taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).resolves.toContain(
-      '"answerId": 3567559',
-    );
+    await expect(readFile(path.join(result.taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).rejects.toThrow();
   });
 
-  it('keeps full task package sync alive when answer info returns a non-array message payload', async () => {
+  it('keeps full task package sync alive without auto-fetching answers even when an answer client exists', async () => {
     const rootDir = await createTempRoot();
+    const answerClient = new AnswerFetchClient({
+      get: async <T>(requestPath: string) => {
+        if (requestPath.includes('/get_answer_info.json')) {
+          return {
+            status: 0,
+            message: '暂无可解锁答案',
+          } as T;
+        }
+
+        return {
+          contents: '',
+        } as T;
+      },
+    });
 
     const result = await syncTaskPackageFromRemote({
       collectionRoot: rootDir,
@@ -481,20 +467,7 @@ describe('hydrateTask', () => {
       passedClient: {
         fetchPassedFiles: async () => [{ path: 'test1/tasks.h', content: 'passed solution\n' }],
       },
-      answerClient: new AnswerFetchClient({
-        get: async <T>(requestPath: string) => {
-          if (requestPath.includes('/get_answer_info.json')) {
-            return {
-              status: 0,
-              message: '暂无可解锁答案',
-            } as T;
-          }
-
-          return {
-            contents: '',
-          } as T;
-        },
-      }),
+      answerClient,
     });
 
     expect(result.materials).toEqual({
@@ -508,12 +481,10 @@ describe('hydrateTask', () => {
     await expect(readFile(path.join(result.taskRoot, 'code', 'current', 'test1', 'tasks.h'), 'utf8')).resolves.toBe(
       'current workspace\n',
     );
-    await expect(readFile(path.join(result.taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).resolves.toContain(
-      '"entries": []',
-    );
+    await expect(readFile(path.join(result.taskRoot, '_educoder', 'answers', 'answer_info.json'), 'utf8')).rejects.toThrow();
   });
 
-  it('auto-unlocks answer bodies during full sync without generating answer index documents', async () => {
+  it('supports explicit full answer sync mode when the caller asks to unlock answers', async () => {
     const rootDir = await createTempRoot();
     const unlockAnswer = vi.fn(async ({ answerId }: { answerId: number }) => ({
       answerId,
@@ -556,6 +527,7 @@ describe('hydrateTask', () => {
       passedClient: {
         fetchPassedFiles: async () => [{ path: 'test1/tasks.h', content: 'passed solution\n' }],
       },
+      answerSyncMode: 'full',
       answerClient: {
         fetchAnswerInfo: async () => ({
           status: 3,

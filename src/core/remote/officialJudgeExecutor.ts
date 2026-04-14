@@ -36,6 +36,29 @@ interface GameBuildResponse {
   had_done?: number;
 }
 
+interface TaskDetailMetaResponse {
+  game?: {
+    id?: number;
+  };
+  challenge?: {
+    id?: number;
+    path?: string;
+  };
+  myshixun?: {
+    identifier?: string;
+  };
+  code_editor?: {
+    shixun_environment_id?: number;
+  };
+  shixun_environments?: Array<{
+    shixun_environment_id?: number;
+  }>;
+  user?: {
+    user_id?: number;
+    login?: string;
+  };
+}
+
 export type OfficialJudgeExecutor = (
   input: ExecuteRemoteJudgeInput,
 ) => Promise<RemoteOfficialJudgeResult>;
@@ -58,7 +81,8 @@ export function getDefaultOfficialJudgeExecutor(): OfficialJudgeExecutor {
 
 export function createOfficialJudgeExecutor(client: EducoderClient): OfficialJudgeExecutor {
   return async ({ taskRoot }) => {
-    const meta = await readOfficialJudgeMeta(taskRoot);
+    const storedMeta = await readOfficialJudgeMeta(taskRoot);
+    const meta = await refreshOfficialJudgeMeta(client, storedMeta);
     const workspaceFiles = await readWorkspaceFiles(taskRoot, meta);
 
     if (!meta.myshixunIdentifier || !meta.userLogin) {
@@ -133,6 +157,55 @@ export function createOfficialJudgeExecutor(client: EducoderClient): OfficialJud
       },
     };
   };
+}
+
+async function refreshOfficialJudgeMeta(
+  client: EducoderClient,
+  storedMeta: OfficialJudgeTaskMeta,
+): Promise<OfficialJudgeTaskMeta> {
+  const get = (client as { get?: EducoderClient['get'] }).get;
+  if (typeof get !== 'function') {
+    return storedMeta;
+  }
+
+  try {
+    const detail = await get<TaskDetailMetaResponse>(
+      `/api/tasks/${storedMeta.taskId}.json`,
+      {
+        homework_common_id: storedMeta.homeworkId,
+      },
+    );
+
+    const refreshedEditablePaths = parseEditablePaths(detail.challenge?.path);
+
+    return {
+      ...storedMeta,
+      gameId: detail.game?.id ?? storedMeta.gameId,
+      challengeId: detail.challenge?.id ?? storedMeta.challengeId,
+      shixunEnvironmentId:
+        detail.code_editor?.shixun_environment_id ??
+        detail.shixun_environments?.[0]?.shixun_environment_id ??
+        storedMeta.shixunEnvironmentId,
+      currentUserId: detail.user?.user_id ?? storedMeta.currentUserId,
+      userLogin: detail.user?.login ?? storedMeta.userLogin,
+      myshixunIdentifier: detail.myshixun?.identifier ?? storedMeta.myshixunIdentifier,
+      editablePaths:
+        refreshedEditablePaths.length > 0 ? refreshedEditablePaths : storedMeta.editablePaths,
+    };
+  } catch {
+    return storedMeta;
+  }
+}
+
+function parseEditablePaths(rawPath: string | undefined): string[] {
+  if (!rawPath) {
+    return [];
+  }
+
+  return rawPath
+    .split(/[;；,\r\n]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 export async function readOfficialJudgeMeta(taskRoot: string): Promise<OfficialJudgeTaskMeta> {

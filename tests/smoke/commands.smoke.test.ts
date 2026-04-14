@@ -56,7 +56,9 @@ describe('command registration', () => {
     expect(commands).toContain('educoderLocalOj.rollbackPassed');
     expect(commands).toContain('educoderLocalOj.syncTaskHistory');
     expect(commands).toContain('educoderLocalOj.restoreHistorySnapshot');
+    expect(commands).toContain('educoderLocalOj.syncTaskAnswersSafe');
     expect(commands).toContain('educoderLocalOj.syncTaskAnswersFromTree');
+    expect(commands).toContain('educoderLocalOj.syncTaskAnswersSafeFromTree');
     expect(commands).toContain('educoderLocalOj.syncTaskRepositoryFromTree');
     expect(commands).toContain('educoderLocalOj.compareWithTemplateFromTree');
     expect(commands).toContain('educoderLocalOj.compareWithAnswerFromTree');
@@ -151,6 +153,14 @@ describe('command registration', () => {
         expect.objectContaining({
           command: 'educoderLocalOj.openLatestFailureOutput',
           title: 'Educoder Local OJ: 打开失败输出',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.syncTaskAnswersSafe',
+          title: 'Educoder Local OJ: 安全同步答案',
+        }),
+        expect.objectContaining({
+          command: 'educoderLocalOj.syncTaskAnswers',
+          title: 'Educoder Local OJ: 完整同步答案（可能影响评分）',
         }),
         expect.objectContaining({
           command: 'educoderLocalOj.compareWithTemplateFromTree',
