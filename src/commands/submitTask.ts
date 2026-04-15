@@ -46,6 +46,15 @@ export async function submitTaskCommand(
   }
 
   const window = deps.window ?? vscode.window;
+  const runRemoteJudgeImpl =
+    deps.runRemoteJudge ??
+    ((options: { force: boolean }) =>
+      runOfficialJudgeCommand(
+        taskRoot,
+        deps.executeRemoteJudge ?? getDefaultOfficialJudgeExecutor(),
+        options as RunOfficialJudgeCommandOptions,
+      ));
+
   const report = await submitTaskFlow({
     taskRoot,
     force: deps.force,
@@ -54,14 +63,7 @@ export async function submitTaskCommand(
     confirmContinueAfterLocalFailure: deps.force
       ? undefined
       : (localReport) => confirmSubmitAfterLocalFailure(localReport, window),
-    runRemoteJudge:
-      deps.runRemoteJudge ??
-      ((options) =>
-        runOfficialJudgeCommand(
-          taskRoot,
-          deps.executeRemoteJudge ?? getDefaultOfficialJudgeExecutor(),
-          options as RunOfficialJudgeCommandOptions,
-        )),
+    runRemoteJudge: () => runRemoteJudgeImpl({ force: true }),
   });
 
   await notifySubmitTaskResult(report, window);

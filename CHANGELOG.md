@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-04-15
+
+### Fixed
+
+- changed normal `提交评测` flow to always trigger forced remote judging (skip hash-cache reuse), so submit now always re-uploads current local code and executes a real Educoder evaluation round
+
 ## [0.0.8] - 2026-04-14
 
 ### Fixed

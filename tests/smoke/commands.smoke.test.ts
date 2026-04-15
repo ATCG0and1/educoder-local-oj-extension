@@ -598,7 +598,7 @@ describe('command registration', () => {
         totalCount: 1,
       },
     });
-    expect(runRemoteJudge).toHaveBeenCalledWith({ force: false });
+    expect(runRemoteJudge).toHaveBeenCalledWith({ force: true });
     expect(vscodeMock.showWarningMessage).toHaveBeenCalledWith(
       '本地测试未通过（未通过 0/1），仍要提交到头哥吗？',
       '继续提交',

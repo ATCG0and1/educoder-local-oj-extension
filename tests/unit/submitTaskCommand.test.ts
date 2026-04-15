@@ -51,7 +51,7 @@ describe('submitTaskCommand', () => {
     expect(saveAll).toHaveBeenCalledTimes(1);
     expect(saveAll.mock.invocationCallOrder[0]).toBeLessThan(runLocalJudge.mock.invocationCallOrder[0]);
     expect(runLocalJudge).toHaveBeenCalledTimes(1);
-    expect(runRemoteJudge).toHaveBeenCalledWith({ force: false });
+    expect(runRemoteJudge).toHaveBeenCalledWith({ force: true });
     expect(result.decision).toBe('submitted_after_local_pass');
     expect(result.remote).toMatchObject({
       passedCount: 1,
@@ -181,7 +181,7 @@ describe('submitTaskCommand', () => {
       '继续提交',
       '取消',
     );
-    expect(runRemoteJudge).toHaveBeenCalledWith({ force: false });
+    expect(runRemoteJudge).toHaveBeenCalledWith({ force: true });
     expect(result.decision).toBe('submitted_after_local_failure');
     expect(showInformationMessage).toHaveBeenCalledWith('已提交到头哥：已通过 1/1 · Accepted');
     expect(showErrorMessage).not.toHaveBeenCalled();
